@@ -1,0 +1,17 @@
+# These examples call a public test API and need network access,
+# which this sandbox's `ezy check` below only validates syntactically.
+response = get "https://httpbin.org/get" with query {"q": "printer", "page": 2}
+
+if response is successful
+    say "status: {response.status}"
+    say response.json.args.q
+otherwise
+    say "request failed (status {response.status}): {response.error}"
+
+response = post "https://httpbin.org/post" send json {"name": "Ayush", "age": 22}
+
+if response is successful
+    say response.json.json.name
+
+response = get "https://httpbin.org/bearer" with header {"Authorization": "Bearer TOKEN"}
+say response.status

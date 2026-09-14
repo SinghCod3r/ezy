@@ -1,0 +1,25 @@
+function greet name, greeting = "Hello"
+    return "{greeting}, {name}!"
+
+say greet("Ayush")
+say greet("World", "Hi")
+
+function factorial n
+    if n <= 1
+        return 1
+    return n * factorial(n - 1)
+
+say factorial(6)
+
+# Functions close over the scope they were defined in.
+function make_counter
+    let count = 0
+    function increment
+        count = count + 1
+        return count
+    return increment
+
+counter = make_counter()
+say counter()
+say counter()
+say counter()

@@ -1,0 +1,8 @@
+name = "World"
+say "Hello, {name}!"
+
+age = 22
+if age >= 18
+    say "You are an adult"
+otherwise
+    say "You are a minor"

@@ -1,0 +1,7 @@
+# Requires network access.
+download "https://httpbin.org/image/png"
+save as "downloaded.png"
+
+if file "downloaded.png" exists
+    say "download complete"
+    delete file "downloaded.png"

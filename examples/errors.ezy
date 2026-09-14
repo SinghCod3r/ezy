@@ -1,0 +1,18 @@
+function safe_divide a, b
+    try
+        return a / b
+    catch err
+        say "error: {err.type}: {err.message}"
+        return null
+
+say safe_divide(10, 2)
+say safe_divide(10, 0)
+
+try
+    content = read "does-not-exist.txt"
+catch err
+    say "could not read file: {err.message}"
+
+result = run "this-command-does-not-exist"
+if result is failed
+    say "process failed, exit code {result.exit_code}"

@@ -1,0 +1,10 @@
+# Requires network access. Each assignment runs on its own thread, and
+# execution continues once every assignment has finished.
+parallel
+    users = get "https://httpbin.org/get?resource=users"
+    products = get "https://httpbin.org/get?resource=products"
+    orders = get "https://httpbin.org/get?resource=orders"
+
+say "users: {users.status}"
+say "products: {products.status}"
+say "orders: {orders.status}"

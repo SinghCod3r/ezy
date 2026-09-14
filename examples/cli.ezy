@@ -1,0 +1,8 @@
+# `arguments` is a built-in list of the values passed after the script
+# name on the command line: `ezy run cli.ezy Ayush 22`
+if length(arguments) < 2
+    say "usage: ezy run cli.ezy <name> <age>"
+otherwise
+    name = arguments[0]
+    age = integer(arguments[1])
+    say "Hello, {name}! In 10 years you'll be {age + 10}."

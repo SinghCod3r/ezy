@@ -1,0 +1,14 @@
+# Process pipelines connect stdout to stdin, like a shell pipe.
+result = run "echo hello world" -> run "tr a-z A-Z"
+say result.output
+
+# A generic pipeline binds the previous value to `it` for each stage.
+function is_even n
+    return n % 2 == 0
+
+function double n
+    return n * 2
+
+numbers = [1, 2, 3, 4, 5, 6, 7, 8]
+result = numbers -> filter(it, is_even) -> map(it, double) -> sort(it)
+say result

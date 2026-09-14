@@ -1,0 +1,16 @@
+result = run "echo Hello from a subprocess"
+say result.output
+say result.exit_code
+
+result = run "git" with arguments ["--version"]
+if result is successful
+    say result.output
+otherwise
+    say "git is not available here"
+
+result = run "this-command-does-not-exist"
+if result is failed
+    say "command failed with exit code {result.exit_code}"
+
+result = run "sleep 3" with timeout 1 seconds
+say "timed out: {result.timed_out}"

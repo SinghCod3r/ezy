@@ -1,0 +1,14 @@
+# Literal braces inside a string must be escaped with \{ and \} because
+# {...} is the string-interpolation syntax.
+raw = "\{\"name\": \"Ayush\", \"skills\": [\"python\", \"rust\"]\}"
+data = parse_json(raw)
+
+say data.name
+say length(data.skills)
+for each skill in data.skills
+    say "- {skill}"
+
+# Map and list literals are the more natural way to build JSON data
+# directly in Ezy, without escaping.
+profile = {"name": "Ayush", "age": 22, "active": true}
+say to_json(profile)

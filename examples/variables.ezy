@@ -1,0 +1,17 @@
+# Plain assignment infers the type from the value.
+name = "Ayush"
+age = 22
+height = 1.78
+active = true
+
+say name
+say age
+say height
+say active
+
+# `let` and `const` create an explicit local binding; `const` cannot
+# be reassigned.
+let score = 0
+const max_score = 100
+score = score + 10
+say "{score} / {max_score}"

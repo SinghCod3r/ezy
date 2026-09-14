@@ -1,0 +1,21 @@
+create folder "scratch"
+create file "scratch/notes.txt"
+
+write "First line" to "scratch/notes.txt"
+append "\nSecond line" to "scratch/notes.txt"
+
+content = read "scratch/notes.txt"
+say content
+
+if file "scratch/notes.txt" exists
+    say "notes.txt is there"
+
+items = list files in "scratch"
+say "files in scratch: {length(items)}"
+
+for each item in items
+    say "- {item.name}"
+
+delete file "scratch/notes.txt"
+delete folder "scratch"
+say "cleaned up"

@@ -1,0 +1,15 @@
+for each fruit in ["apple", "banana", "cherry"]
+    say fruit
+
+for n from 1 to 5
+    say "count: {n}"
+
+total = 0
+n = 1
+while n <= 10
+    total = total + n
+    n = n + 1
+say "sum 1..10 = {total}"
+
+repeat 3 times
+    say "polling..."
