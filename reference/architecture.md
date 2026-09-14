@@ -27,7 +27,7 @@ directly. For a scripting language whose workloads are dominated by
 I/O (file, process, HTTP) rather than tight numeric loops, the
 overhead of tree-walking is not the bottleneck, and it keeps the whole
 pipeline (source -> tokens -> AST -> result) inspectable and easy to
-extend — a deliberate simplicity-over-raw-speed tradeoff. `docs/limitations.md`
+extend — a deliberate simplicity-over-raw-speed tradeoff. `reference/limitations.md`
 notes what this rules out for now (e.g. a bytecode-level debugger).
 
 ## Environments
@@ -38,7 +38,7 @@ create a new `Environment` whose parent is the function's *closure*
 (the environment active where the function was defined), which is how
 closures work. `if`/`for`/`while`/`try` bodies execute directly against
 the enclosing environment rather than creating a new one — see
-"Scoping" in docs/language.md for the reasoning.
+"Scoping" in reference/language.md for the reasoning.
 
 ## Values
 
@@ -91,7 +91,7 @@ to make a script's dependencies self-documenting and to catch typos.
 ## Processes
 
 `stdlib/process.py` uses `shlex.split` plus `subprocess.run`/`Popen`
-with `shell=False` always — see docs/security.md for why. Piping two
+with `shell=False` always — see reference/security.md for why. Piping two
 `run` stages together (`run "a" -> run "b"`) is detected in
 `eval_PipelineExpr` and handed to `run_pipeline`, which wires
 `Popen` stdout directly into the next process's stdin, rather than

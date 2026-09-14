@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security — Ezy</title>
+<meta name="description" content="Ezy's security model: process execution without a shell, TLS always verified, and what is not sandboxed.">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js" defer></script>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="wordmark" href="index.html">ezy</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="language.html">Language</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="security.html" aria-current="page">Security</a>
+      <a href="limitations.html">Limitations</a>
+      <a href="https://github.com/SinghCod3r/ezy">GitHub</a>
+    </div>
+    <button class="theme-toggle" aria-label="Toggle color theme">&#9675;</button>
+  </div>
+</nav>
+
+<main>
+
+<h1>Security</h1>
+<p class="lede">What Ezy protects against by construction, and what it doesn't try to.</p>
+
+<h2>Process execution</h2>
+<p><code>run "some string"</code> is tokenized with Python's
+<code>shlex.split</code> and executed via <code>subprocess.run(argv,
+shell=False, ...)</code>. No shell is ever invoked, so shell
+metacharacters (<code>; &amp;&amp; | `</code> backticks, <code>$()</code>)
+inside the string are treated as literal argument text, not
+interpreted — there is no command-injection path through
+<code>run "literal string"</code> alone.</p>
+
+<p>The risk that remains: if a script builds the command <em>string</em>
+by concatenating untrusted input (<code>run "cat " + user_input</code>),
+<code>shlex.split</code> will still split on whitespace/quotes inside
+<code>user_input</code>, which can change argument boundaries even
+though it can't invoke a shell. <strong><code>run "cmd" with arguments
+[...]</code> avoids this entirely</strong> — the argument list is
+passed to the process untouched, one list element per argument, with
+no re-parsing. Prefer it whenever a command is built from anything
+other than a fixed literal.</p>
+
+<h2>Filesystem</h2>
+<p>File operations act on whatever path string the script provides,
+resolved the same way Python's <code>open()</code> resolves it.
+Ezy does <strong>not</strong> sandbox script filesystem access to a
+project directory — a script can read or delete anything the OS-level
+user running <code>ezy</code> can. This matches the trust model of
+Bash or Python scripts run directly; it is not a sandbox, and should
+be reviewed with the same care before running with elevated
+privileges.</p>
+
+<p>Missing parent directories are created automatically by
+<code>write</code>/<code>append</code>/<code>create file</code>, which
+is convenient but can create directory structure the caller didn't
+expect. Symlinks are followed without special handling — there is no
+symlink-attack detection yet.</p>
+
+<h2>HTTP</h2>
+<ul>
+  <li>TLS certificate verification is always on. There is no
+      <code>with insecure</code> flag, by design.</li>
+  <li>Headers (including <code>Authorization</code>) are sent exactly
+      as given and are never logged by the interpreter itself.</li>
+  <li>A non-2xx response does not raise; it comes back as
+      <code>response.ok == false</code> with the status and body still
+      available, so scripts aren't tempted to swallow errors with a
+      broad <code>try</code> just to inspect a 404.</li>
+  <li>Connection errors, timeouts, and TLS failures are caught and
+      returned as <code>response.ok == false</code> with
+      <code>response.error</code> describing the failure, rather than
+      crashing the script — but never silently treated as success.</li>
+</ul>
+
+<h2>Modules</h2>
+<p>Local module imports (<code>use "./utils"</code>) only load a file
+the script author names explicitly, resolved relative to the
+importing script's own directory. There is no remote/package-registry
+import path yet, which removes an entire class of supply-chain risk
+that a real package manager would need to address before shipping.</p>
+
+<h2>What was not built, and why that's security-relevant</h2>
+<ul>
+  <li><strong>No package manager.</strong> Processing third-party code
+      is a significant trust boundary — signature verification, lock
+      files, registry compromise. Shipping a fake one would be worse
+      than not having one; see <a href="limitations.html">Limitations</a>.</li>
+  <li><strong>No sandboxing</strong> of filesystem/process/network
+      access per script. This matches how Bash, Python, and Ruby
+      scripts already work — it's stated here plainly rather than
+      implied away. Ezy's security work concentrates on <em>how</em>
+      operations are performed (no shell injection, TLS always
+      verified, no credential logging), not on isolating a script from
+      the machine it runs on.</li>
+</ul>
+
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>MIT License</div>
+    <div>Ayush Singh</div>
+    <div><a href="https://github.com/SinghCod3r/ezy">github.com/SinghCod3r/ezy</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — Ezy</title>
+<meta name="description" content="How Ezy turns source text into a result: lexer, parser, AST, tree-walking interpreter, and standard library.">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js" defer></script>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="wordmark" href="index.html">ezy</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="language.html">Language</a>
+      <a href="architecture.html" aria-current="page">Architecture</a>
+      <a href="security.html">Security</a>
+      <a href="limitations.html">Limitations</a>
+      <a href="https://github.com/SinghCod3r/ezy">GitHub</a>
+    </div>
+    <button class="theme-toggle" aria-label="Toggle color theme">&#9675;</button>
+  </div>
+</nav>
+
+<main>
+
+<h1>Architecture</h1>
+<p class="lede">No bytecode compiler, no VM — a tree-walking interpreter, on purpose.</p>
+
+<pre class="plain">source (.ezy / .ez)
+     |
+     v
+  Lexer            tokens, with INDENT/DEDENT synthesized from
+     |             leading spaces (Python-style layout rule)
+     v
+  Parser           recursive-descent, one function per grammar
+     |             rule, precedence-climbing for expressions
+     v
+  AST              plain dataclasses, one per statement/expression kind
+     |
+     v
+  Interpreter      tree-walking evaluator: exec_&lt;NodeType&gt; for
+     |             statements, eval_&lt;NodeType&gt; for expressions
+     v
+  stdlib/          files.py, process.py, http.py: thin wrappers
+                   around os/shutil, subprocess, and requests</pre>
+
+<p>For a scripting language whose workloads are dominated by I/O (file,
+process, HTTP) rather than tight numeric loops, the overhead of
+tree-walking is not the bottleneck, and it keeps the whole pipeline —
+source, tokens, AST, result — inspectable and easy to extend. See
+<a href="limitations.html">Limitations</a> for what this rules out
+(e.g. a bytecode-level debugger).</p>
+
+<h2>Environments</h2>
+<p><code>Environment</code> is a parent-linked scope chain: a dict of
+names plus a set of names that are <code>const</code>. A function call
+creates a new <code>Environment</code> whose parent is the function's
+<em>closure</em> — the environment active where the function was
+defined — which is how closures work. <code>if</code>/<code>for</code>/
+<code>while</code>/<code>try</code> bodies execute directly against the
+enclosing environment rather than creating a new one; see "Scoping" in
+the <a href="language.html">language reference</a> for why.</p>
+
+<h2>Values</h2>
+<p>Most Ezy values map directly onto native Python values
+(<code>str</code>, <code>int</code>, <code>float</code>,
+<code>bool</code>, <code>None</code>, <code>list</code>,
+<code>dict</code>) so builtins like <code>parse_json</code>/
+<code>to_json</code> need no conversion layer. A handful of small
+wrapper types add extra behavior: <code>EzyPath</code>,
+<code>HttpResponse</code>, <code>ProcessResult</code>,
+<code>Function</code>, <code>BuiltinFunction</code>,
+<code>EzyModule</code>, <code>EzyErrorValue</code>.</p>
+
+<h2>Control flow</h2>
+<p><code>break</code>, <code>continue</code>, and <code>return</code>
+are implemented as Python exceptions caught at the appropriate loop or
+function boundary — the standard technique for a tree-walking
+interpreter, and it keeps each statement's execution method free of
+manual "did we return?" flag threading.</p>
+
+<h2>Errors</h2>
+<p><code>EzyRuntimeError</code> carries an <code>error_type</code>
+string (<code>"FileError"</code>, <code>"HttpError"</code>, ...) and a
+<code>message</code>; <code>try</code>/<code>catch</code> catches
+exactly this class and binds an error value with those two fields to
+the <code>catch</code> variable. A syntax error is a separate class
+and is never catchable from inside a script — it's caught before the
+program starts running.</p>
+
+<h2>String interpolation</h2>
+<p>While scanning a string literal, the lexer recognizes
+<code>{...}</code> and records the enclosed source text rather than
+tokenizing it inline. The parser re-lexes and parses that fragment as
+a standalone expression with a fresh lexer/parser pair. This keeps the
+main grammar free of string-interpolation special cases, at the cost
+of a second small pass per interpolated expression — negligible for
+realistic script sizes.</p>
+
+<h2>Modules</h2>
+<p><code>use "./utils"</code> parses and executes the target file once,
+in its own top-level environment, then wraps every name it defined
+into a namespace and caches it by resolved path so re-importing the
+same file within one run is free. Built-in module names
+(<code>use "http"</code>) are validated against a fixed set but are a
+no-op otherwise — the corresponding functions are always available as
+globals; <code>use</code> exists to make a script's dependencies
+self-documenting and to catch typos.</p>
+
+<h2>Processes</h2>
+<p>Commands are tokenized with <code>shlex.split</code> and run via
+<code>subprocess</code> with <code>shell=False</code>, always — see
+<a href="security.html">Security</a> for why. Piping two <code>run</code>
+stages together (<code>run "a" -> run "b"</code>) wires
+<code>Popen</code> stdout directly into the next process's stdin,
+rather than buffering the first command's full output before starting
+the second.</p>
+
+<h2>HTTP</h2>
+<p><code>get/post/put/patch/delete</code> expressions and their
+<code>with header/query/timeout</code> and <code>send json</code>
+modifiers all parse into a single request node and are evaluated in
+one place, which keeps the mapping from syntax to the underlying HTTP
+call in one spot rather than scattered across the interpreter.</p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>MIT License</div>
+    <div>Ayush Singh</div>
+    <div><a href="https://github.com/SinghCod3r/ezy">github.com/SinghCod3r/ezy</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

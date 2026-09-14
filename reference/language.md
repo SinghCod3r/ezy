@@ -136,7 +136,7 @@ files = list files in "projects"   # list of paths, sorted by name
 
 `read` only supports UTF-8 text files; a binary file raises a
 `FileError` with a clear message rather than returning garbage (see
-docs/limitations.md).
+reference/limitations.md).
 
 ## Processes
 
@@ -156,7 +156,7 @@ result.timed_out
 **without a shell** — no shell metacharacter ever gets interpreted.
 `run "cmd" with arguments [...]` skips tokenization entirely; prefer it
 whenever any part of the command comes from untrusted input (a
-downloaded value, a user-supplied string). See docs/security.md.
+downloaded value, a user-supplied string). See reference/security.md.
 
 Piping stdout into stdin across commands:
 
@@ -233,7 +233,7 @@ say utils.some_function(1, 2)
 
 A local module is executed once in its own scope; every top-level
 name it defines (functions and variables) becomes a member accessible
-with `.`. There is no package registry yet — see docs/limitations.md.
+with `.`. There is no package registry yet — see reference/limitations.md.
 
 ## Regex
 
@@ -258,7 +258,7 @@ Each assignment inside a `parallel` block runs on its own thread; the
 block waits for all of them before continuing. This is aimed
 specifically at I/O-bound work (HTTP calls, process launches) — CPython's
 GIL means it does not speed up CPU-bound Ezy code. See
-docs/limitations.md for what `parallel` intentionally does not support.
+reference/limitations.md for what `parallel` intentionally does not support.
 
 `wait N seconds` pauses the script.
 
@@ -271,7 +271,7 @@ value = 5 -> double(it) -> triple(it)         # generic: `it` is bound
                                                 # value
 ```
 
-See docs/limitations.md for why this is explicit-function-call based
+See reference/limitations.md for why this is explicit-function-call based
 rather than the bare-predicate form (`-> filter age >= 18`) sketched in
 early notes.
 

@@ -1,0 +1,381 @@
+/* Ezy site — a plain-paper / instruction-manual aesthetic.
+   One serif for reading, one monospace for anything that is code
+   or that represents the machine's voice. Code panels stay a fixed
+   dark "ink" regardless of the page theme — the one bold, consistent
+   element on an otherwise quiet, flat page. */
+
+:root {
+  --bg: #f0efe9;
+  --fg: #1c1b19;
+  --muted: #6b675f;
+  --border: #dad7cd;
+  --accent: #8a5a2b;
+  --accent-contrast: #fdfcf9;
+  --card-bg: #f6f5f0;
+  --code-bg: #1c1b19;
+  --code-fg: #f0efe9;
+  --code-border: #8a5a2b;
+  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  --max: 42rem;
+  --max-wide: 64rem;
+}
+
+html[data-theme="dark"] {
+  --bg: #17150f;
+  --fg: #ede9df;
+  --muted: #a39c8c;
+  --border: #332f27;
+  --accent: #d19a5c;
+  --accent-contrast: #17150f;
+  --card-bg: #1d1b15;
+  --code-bg: #0f0e0a;
+  --code-fg: #ede9df;
+  --code-border: #d19a5c;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --bg: #17150f;
+    --fg: #ede9df;
+    --muted: #a39c8c;
+    --border: #332f27;
+    --accent: #d19a5c;
+    --accent-contrast: #17150f;
+    --card-bg: #1d1b15;
+    --code-bg: #0f0e0a;
+    --code-fg: #ede9df;
+    --code-border: #d19a5c;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { color-scheme: light dark; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- layout shells ---- */
+
+.site-nav {
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-inner {
+  max-width: var(--max-wide);
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.wordmark {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--fg);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.nav-links a:hover,
+.nav-links a[aria-current="page"] {
+  color: var(--fg);
+}
+
+.theme-toggle {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.theme-toggle:hover { border-color: var(--accent); }
+
+main {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 3rem 1.25rem 5rem;
+}
+
+main.wide { max-width: var(--max-wide); }
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  margin-top: 3rem;
+}
+
+.footer-inner {
+  max-width: var(--max-wide);
+  margin: 0 auto;
+  padding: 1.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ---- typography ---- */
+
+h1, h2, h3 {
+  font-family: var(--serif);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--fg);
+}
+
+h1 { font-size: 2.4rem; margin: 0 0 1rem; letter-spacing: -0.01em; }
+h2 { font-size: 1.5rem; margin: 2.75rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+h2:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.6rem; }
+
+p { margin: 0 0 1.1rem; }
+
+.lede {
+  font-size: 1.2rem;
+  color: var(--muted);
+  max-width: 34rem;
+}
+
+.muted { color: var(--muted); }
+
+ul, ol { padding-left: 1.3rem; }
+li { margin: 0.3rem 0; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95rem;
+  margin: 1.25rem 0;
+}
+
+th, td {
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  vertical-align: top;
+}
+
+th { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+
+code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.05em 0.35em;
+}
+
+/* ---- code / terminal panels: fixed dark ink regardless of theme ---- */
+
+.panel {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  border: 1px solid var(--code-border);
+  border-radius: 4px;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+}
+
+.panel .dots {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.panel .dots span {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--code-border);
+  opacity: 0.55;
+}
+
+.panel pre {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.panel code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+.panel .c { color: var(--code-border); }      /* comments */
+.panel .s { opacity: 0.85; }                  /* strings/output */
+
+pre.plain {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  border-radius: 3px;
+}
+
+/* ---- buttons ---- */
+
+.btn-row { display: flex; gap: 0.9rem; flex-wrap: wrap; margin: 1.5rem 0 0.5rem; }
+
+.btn {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--fg);
+  border-radius: 3px;
+  text-decoration: none;
+  color: var(--fg);
+  display: inline-block;
+}
+
+.btn.primary {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.btn:hover { border-color: var(--accent); }
+.btn.primary:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+
+/* ---- feature grid ---- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+
+.grid .cell {
+  background: var(--card-bg);
+  padding: 1.25rem 1.4rem;
+}
+
+.grid .cell .label {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.grid .cell p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; }
+  h1 { font-size: 1.9rem; }
+}
+
+/* ---- doc index list (used on the home page) ---- */
+
+.doc-list { border-top: 1px solid var(--border); margin-top: 1.5rem; }
+
+.doc-list a {
+  display: block;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--fg);
+}
+
+.doc-list a:hover .doc-title { color: var(--accent); }
+
+.doc-title { font-weight: 700; }
+.doc-desc { color: var(--muted); font-size: 0.92rem; margin-top: 0.15rem; }
+
+/* ---- ordered steps (used only for genuine sequences) ---- */
+
+.steps { counter-reset: step; list-style: none; padding: 0; }
+
+.steps li {
+  counter-increment: step;
+  padding: 0.9rem 0 0.9rem 2.4rem;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+}
+
+.steps li:first-child { border-top: 1px solid var(--border); }
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.85rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- hero typing reveal: one deliberate moment, skipped if reduced motion ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .type-in {
+    overflow: hidden;
+    white-space: nowrap;
+    width: 0;
+    animation: type 1.6s steps(34, end) forwards;
+  }
+  @keyframes type {
+    to { width: 100%; }
+  }
+}

@@ -64,7 +64,7 @@ suite), and the CLI's exit codes and argument handling.
 - **The REPL's** multi-line block detection is a heuristic (checks for
   known block-opening keywords and trailing colons), not a full
   incremental parse. It handles the common cases shown in
-  `docs/language.md` but can be confused by unusual formatting.
+  `reference/language.md` but can be confused by unusual formatting.
 - **`->` pipelines**: when every stage is a `run "..."` process call,
   `->` performs a real OS-level pipe. Otherwise it is sugar for
   binding `it` to the previous value and evaluating the next
@@ -103,9 +103,9 @@ suite), and the CLI's exit codes and argument handling.
   Linux. `subprocess`/`shlex` behavior and path separators differ on
   Windows; nothing has been verified there.
 - **Bytecode compiler / VM.** The interpreter tree-walks the AST
-  directly (see docs/architecture.md) — there is no faster execution
+  directly (see reference/architecture.md) — there is no faster execution
   tier.
-- **Sandboxing.** See docs/security.md — Ezy scripts have the same
+- **Sandboxing.** See reference/security.md — Ezy scripts have the same
   filesystem/process/network access as the OS user running them.
 
 ## Deliberate design deviations from the original brief
@@ -128,7 +128,7 @@ suite), and the CLI's exit codes and argument handling.
   after `list`, rather than a reserved word — because the canonical
   example in the design brief (`files = list files in "projects"`)
   uses "files" as both a variable name and part of the syntax in the
-  same line. Every other keyword listed in docs/language.md *is*
+  same line. Every other keyword listed in reference/language.md *is*
   fully reserved; this is the one deliberate exception.
 - **String interpolation reserves `{` and `}`** inside string literals,
   requiring `\{`/`\}` for a literal brace (e.g. embedding raw JSON

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ezy — a readable scripting language for automation</title>
+<meta name="description" content="Ezy is a readable, deterministic scripting language for automation: files, processes, HTTP, and JSON as first-class citizens.">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js" defer></script>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="wordmark" href="index.html">ezy</a>
+    <div class="nav-links">
+      <a href="index.html" aria-current="page">Home</a>
+      <a href="language.html">Language</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="security.html">Security</a>
+      <a href="limitations.html">Limitations</a>
+      <a href="https://github.com/SinghCod3r/ezy">GitHub</a>
+    </div>
+    <button class="theme-toggle" aria-label="Toggle color theme">&#9675;</button>
+  </div>
+</nav>
+
+<main class="wide">
+
+  <section>
+    <h1>A scripting language you can read like instructions.</h1>
+    <p class="lede">Ezy is built for automation — files, processes, HTTP,
+       and JSON are first-class, the syntax stays close to plain English
+       without becoming a natural-language parser, and nothing about the
+       runtime depends on AI.</p>
+
+    <div class="panel">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <pre><code><span class="c"># hello.ezy</span>
+name = "World"
+say "Hello, {name}!"
+
+<span class="c"># files and conditions read like sentences</span>
+if file "config.json" exists
+    config = parse_json(read "config.json")
+    say config.name
+
+<span class="c"># HTTP, structured, no curl flags to memorize</span>
+response = get "https://api.example.com/users"
+if response is successful
+    for each user in response.json
+        say user.name</code></pre>
+    </div>
+
+    <div class="btn-row">
+      <a class="btn primary" href="#get-started">Install</a>
+      <a class="btn" href="language.html">Read the language reference</a>
+      <a class="btn" href="https://github.com/SinghCod3r/ezy">View source</a>
+    </div>
+  </section>
+
+  <section>
+    <h2>Built for automation, not general demos</h2>
+    <div class="grid">
+      <div class="cell"><span class="label">files</span><p>create, write, append, read, delete, and list — with real error messages, not stack traces.</p></div>
+      <div class="cell"><span class="label">processes</span><p>run commands without a shell, so nothing you pass in can be interpreted as shell syntax.</p></div>
+      <div class="cell"><span class="label">http</span><p>get, post, put, patch, delete with headers, query params, JSON bodies, and timeouts.</p></div>
+      <div class="cell"><span class="label">json</span><p>map and list literals already are JSON — parsing and pretty-printing are one call away.</p></div>
+      <div class="cell"><span class="label">concurrency</span><p>a parallel block runs independent requests on their own threads and waits for all of them.</p></div>
+      <div class="cell"><span class="label">deterministic</span><p>the lexer, parser, and interpreter are plain code. no model sits in the execution path.</p></div>
+    </div>
+  </section>
+
+  <section id="get-started">
+    <h2>Get started</h2>
+    <ol class="steps">
+      <li>
+        <strong>Clone the repository</strong>
+        <pre class="plain">git clone https://github.com/SinghCod3r/ezy.git
+cd ezy</pre>
+      </li>
+      <li>
+        <strong>Install it</strong>
+        <pre class="plain">pip install -e .</pre>
+        <p class="muted" style="margin-top:0.5rem">Needs Python 3.9+. On a system that blocks global pip installs, add <code>--break-system-packages</code> or use a virtual environment.</p>
+      </li>
+      <li>
+        <strong>Run a script</strong>
+        <pre class="plain">ezy run examples/hello.ezy</pre>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Documentation</h2>
+    <div class="doc-list">
+      <a href="language.html">
+        <div class="doc-title">Language reference</div>
+        <div class="doc-desc">Every statement and expression: variables, types, conditions, loops, functions, files, processes, HTTP, JSON, errors, modules, and the CLI.</div>
+      </a>
+      <a href="architecture.html">
+        <div class="doc-title">Architecture</div>
+        <div class="doc-desc">How source becomes tokens, an AST, and a result — lexer, parser, tree-walking interpreter, and the standard library.</div>
+      </a>
+      <a href="security.html">
+        <div class="doc-title">Security</div>
+        <div class="doc-desc">How process execution avoids shell injection, how HTTP handles TLS and credentials, and what is not sandboxed.</div>
+      </a>
+      <a href="limitations.html">
+        <div class="doc-title">Limitations</div>
+        <div class="doc-desc">An honest list of what's implemented, partial, and planned — plus a few deliberate deviations from the original design brief.</div>
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>MIT License</div>
+    <div>Ayush Singh</div>
+    <div><a href="https://github.com/SinghCod3r/ezy">github.com/SinghCod3r/ezy</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

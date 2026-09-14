@@ -16,7 +16,7 @@ by concatenating untrusted input (`run "cat " + user_input`),
 can't invoke a shell. **`run "cmd" with arguments [...]` avoids this
 entirely** — the argument list is passed to `subprocess` untouched,
 one Python list element per process argument, with no re-parsing. This
-is called out in docs/language.md and used in
+is called out in reference/language.md and used in
 `examples/process.ezy`; scripts that build a command from any value
 that isn't a fixed literal should prefer it.
 
@@ -34,7 +34,7 @@ the OS-level user running `ezy` can. This matches the trust model of
 Bash/Python scripts run directly (the language is not a sandbox), but
 it means Ezy scripts should be reviewed with the same care as shell
 scripts before running them with elevated privileges. This is called
-out again in docs/limitations.md.
+out again in reference/limitations.md.
 
 `create_file`/`write_file`/`append_file` create missing parent
 directories with `os.makedirs(..., exist_ok=True)`, which can silently
@@ -72,7 +72,7 @@ from untrusted input.
 Local module imports (`use "./utils"`) only ever load a file the
 script author names explicitly, resolved relative to the importing
 script's directory — there is no remote/package-registry import path
-yet (see docs/limitations.md), which removes an entire class of
+yet (see reference/limitations.md), which removes an entire class of
 supply-chain risk that a real package manager would need to address
 before it ships.
 
@@ -81,7 +81,7 @@ before it ships.
 - No package manager: a "planned" package manager processing
   third-party code is a significant trust boundary (signature
   verification, lock files, registry compromise) — see
-  docs/limitations.md. Shipping a fake one would be worse than not
+  reference/limitations.md. Shipping a fake one would be worse than not
   having one.
 - No sandboxing of filesystem/process/network access per script. This
   is consistent with how Bash, Python, and Ruby scripts already work,

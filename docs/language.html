@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Language reference — Ezy</title>
+<meta name="description" content="Full reference for the Ezy scripting language: syntax, types, variables, conditions, loops, functions, files, processes, HTTP, JSON, errors, modules, and the CLI.">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js" defer></script>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="wordmark" href="index.html">ezy</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="language.html" aria-current="page">Language</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="security.html">Security</a>
+      <a href="limitations.html">Limitations</a>
+      <a href="https://github.com/SinghCod3r/ezy">GitHub</a>
+    </div>
+    <button class="theme-toggle" aria-label="Toggle color theme">&#9675;</button>
+  </div>
+</nav>
+
+<main>
+
+<h1>Language reference</h1>
+<p class="lede">Everything the interpreter understands, in the order you'll actually use it.</p>
+
+<h2>Syntax basics</h2>
+<ul>
+  <li>Blocks are indented with spaces (tabs are rejected). A block follows a line ending in a statement that expects one (<code>if</code>, <code>for</code>, <code>while</code>, <code>repeat</code>, <code>function</code>, <code>try</code>/<code>catch</code>, <code>parallel</code>).</li>
+  <li>Comments start with <code>#</code> and run to the end of the line.</li>
+  <li>Statements end at a newline; there is no statement separator.</li>
+  <li>Strings use <code>"</code> or <code>'</code>. <code>{expr}</code> inside a string interpolates an expression. A literal <code>{</code> or <code>}</code> is escaped as <code>\{</code> / <code>\}</code>.</li>
+</ul>
+
+<h2>Values and types</h2>
+<table>
+<tr><th>Type</th><th>Example</th><th>Notes</th></tr>
+<tr><td>string</td><td><code>"hi"</code></td><td>UTF-8 text</td></tr>
+<tr><td>integer</td><td><code>42</code></td><td>arbitrary-precision</td></tr>
+<tr><td>decimal</td><td><code>3.14</code></td><td>IEEE double</td></tr>
+<tr><td>boolean</td><td><code>true</code> / <code>false</code></td><td></td></tr>
+<tr><td>null</td><td><code>null</code></td><td>also the result of a missing map key</td></tr>
+<tr><td>list</td><td><code>[1, 2, 3]</code></td><td>0-indexed, mutable</td></tr>
+<tr><td>map</td><td><code>{"a": 1, "b": 2}</code></td><td>string keys, insertion-ordered</td></tr>
+<tr><td>path</td><td><code>path("a/b.txt")</code></td><td><code>.name .extension .parent .exists</code></td></tr>
+<tr><td>http response</td><td>result of <code>get</code>/<code>post</code>/...</td><td><code>.status .text .json .headers .url .ok .error</code></td></tr>
+<tr><td>process result</td><td>result of <code>run</code></td><td><code>.output .error .exit_code .ok .timed_out</code></td></tr>
+<tr><td>function</td><td><code>function f ...</code></td><td>closes over its defining scope</td></tr>
+</table>
+<p><code>type_of(x)</code> returns the type name as a string. <code>string(x)</code>, <code>integer(x)</code>, <code>decimal(x)</code> convert between types.</p>
+
+<h3>Equality and truthiness</h3>
+<p><code>==</code>/<code>!=</code> compare any two values by structural equality. <code>&lt; &lt;= &gt; &gt;=</code> only work between two numbers or two strings; other combinations raise a <code>TypeError</code>. In a condition, <code>false</code>, <code>null</code>, <code>0</code>, <code>0.0</code>, <code>""</code>, <code>[]</code>, and <code>{}</code> are falsy — everything else is truthy.</p>
+
+<h2>Variables</h2>
+<div class="panel"><div class="dots"><span></span><span></span><span></span></div><pre><code>name = "Ayush"          <span class="c"># define or reassign, walking outward to an
+                          existing binding first, else defining locally</span>
+let x = 1                <span class="c"># always defines a new local binding (shadows)</span>
+const max_retries = 3    <span class="c"># like let, but reassignment is a TypeError</span></code></pre></div>
+<p>Ezy uses <strong>function-level scoping</strong>, not block-level: a variable assigned inside an <code>if</code>, <code>for</code>, <code>while</code>, or <code>try</code> body is visible after that block ends, in the same function (or top-level script) — matching what people coming from Python or Bash expect. <code>let</code>/<code>const</code> create an explicit new binding when you want to shadow an outer variable on purpose.</p>
+
+<h2>Operators</h2>
+<p><code>+ - * / %</code> &nbsp; <code>== != &lt; &lt;= &gt; &gt;=</code> &nbsp; <code>and or not</code> &nbsp; <code>matches</code> (regex test). <code>+</code> concatenates when either side is a string, concatenates two lists, and adds otherwise. <code>/</code> returns an integer when both operands are integers and divide evenly, a decimal otherwise. Division and modulo by zero raise a <code>MathError</code>.</p>
+
+<h2>Conditions</h2>
+<div class="panel"><div class="dots"><span></span><span></span><span></span></div><pre><code>if age >= 18
+    say "adult"
+otherwise if age >= 13
+    say "teen"
+otherwise
+    say "child"</code></pre></div>
+
+<h2>Loops</h2>
+<div class="panel"><div class="dots"><span></span><span></span><span></span></div><pre><code>for each item in [1, 2, 3]
+    say item
+
+for n from 1 to 10       <span class="c"># inclusive; counts down if start > end</span>
+    say n
+
+repeat 5 times
+    say "hi"
+
+while condition
+    ...
+    break
+    continue</code></pre></div>
+<p><code>for each</code> iterates a list's elements, a string's characters, or a map's values.</p>
+
+<h2>Functions</h2>
+<div class="panel"><div class="dots"><span></span><span></span><span></span></div><pre><code>function add a, b
+    return a + b
+
+function greet name, greeting = "Hello"   <span class="c"># default argument</span>
+    return "{greeting}, {name}"</code></pre></div>
+<p>Functions are closures: a nested function keeps access to the variables of the function that defined it, including after the outer function has returned. Calling with too few arguments (and no default) or too many is a <code>TypeError</code>.</p>
+
+<h2>Strings and collections</h2>
+<p>Built-in functions: <code>length upper lower trim split join replace contains keys values sort sort_by reverse map filter reduce find count min max round abs sqrt</code>. <code>x.length</code> also works as a property.</p>
+
+<h2>Files</h2>
+<div class="panel"><div class="dots"><span></span><span></span><span></span></div><pre><code>create file "notes.txt"
+create folder "projects"
+write "hello" to "notes.txt"      <span class="c"># overwrites</span>
+append "\nmore" to "notes.txt"
+content = read "notes.txt"
+delete file "notes.txt"
+delete folder "projects"
+if file "notes.txt" exists
+    ...
+files = list files in "projects"   <span class="c"># list of paths, sorted by name</span></code></pre></div>
+<p><code>read</code> only supports UTF-8 text files; a binary file raises a clear <code>FileError</code> rather than returning garbage.</p>
+
+<h2>Processes</h2>
+<div class="panel"><div class="dots"><span></span><span></span><span></span></div><pre><code>result = run "git status"
+result = run "git" with arguments ["status", "--short"]
+result = run "some-command" with timeout 5 seconds
+
+result.output      <span class="s">stdout</span>
+result.error       <span class="s">stderr</span>
+result.exit_code
+result.ok           <span class="s">true if exit_code == 0</span>
+result.timed_out</code></pre></div>
+<p><code>run "cmd"</code> is tokenized with <code>shlex</code> and executed <strong>without a shell</strong> — no shell metacharacter is ever interpreted. <code>run "cmd" with arguments [...]</code> skips tokenization entirely; prefer it whenever part of the command comes from untrusted input.</p>
+<p>Piping stdout into stdin across commands:</p>
+<pre class="plain">result = run "echo hello" -> run "tr a-z A-Z"</pre>
+
+<h2>HTTP</h2>
+<div class="panel"><div class="dots"><span></span><span></span><span></span></div><pre><code>response = get "https://api.example.com/users"
+response = get url with query {"q": "printer", "page": 2}
+response = get url with header {"Authorization": "Bearer TOKEN"}
+response = get url with timeout 10 seconds
+response = post url send json {"name": "Ayush"}
+response = put url send json {...}
+response = patch url send json {...}
+response = delete url
+
+if response is successful       <span class="c"># response.ok, i.e. 2xx</span>
+    ...
+if response is failed
+    ...
+
+download "https://example.com/file.zip"
+save as "file.zip"</code></pre></div>
+<p>TLS certificate verification is always on. Redirects follow the underlying library's defaults. A failed connection, DNS lookup, or timeout is reported as <code>response.ok == false</code> with <code>response.error</code> set, rather than raising — so a normal <code>if response is successful / otherwise</code> handles it. A malformed JSON body only raises when you access <code>.json</code>.</p>
+
+<h2>JSON</h2>
+<pre class="plain">data = parse_json(text)
+text = to_json(value)              <span class="c"># pretty-printed by default</span>
+text = to_json(value, false)       <span class="c"># compact</span></pre>
+<p>Since a map/list literal already <em>is</em> JSON-shaped, most scripts only need <code>parse_json</code>/<code>to_json</code> at the edges. <code>response.json</code> parses an HTTP response body automatically.</p>
+
+<h2>Errors</h2>
+<div class="panel"><div class="dots"><span></span><span></span><span></span></div><pre><code>try
+    response = get url
+    if response is failed
+        say "not ok: {response.status}"
+catch err
+    say "{err.type}: {err.message}"</code></pre></div>
+<p>Errors always have a <code>type</code> (<code>FileError</code>, <code>HttpError</code>, <code>ProcessError</code>, <code>MathError</code>, <code>TypeError</code>, <code>NameError</code>, <code>IndexError</code>, <code>KeyError</code>, <code>JsonError</code>, <code>ModuleError</code>, <code>RegexError</code>) and a <code>message</code>. Uncaught errors halt the script with exit code 2.</p>
+
+<h2>Modules</h2>
+<pre class="plain">use "http"          <span class="c"># built-in module names are validated, not required</span>
+use "./utils"        <span class="c"># loads ./utils.ezy (or .ez) as a namespace</span>
+say utils.some_function(1, 2)</pre>
+<p>A local module runs once in its own scope; every top-level name it defines becomes a member accessible with <code>.</code>. There is no package registry yet — see <a href="limitations.html">Limitations</a>.</p>
+
+<h2>Regex</h2>
+<pre class="plain">if text matches "^[A-Z][a-z]+$"
+    say "looks like a name"</pre>
+
+<h2>Concurrency</h2>
+<div class="panel"><div class="dots"><span></span><span></span><span></span></div><pre><code>parallel
+    users = get users_url
+    products = get products_url
+    orders = get orders_url</code></pre></div>
+<p>Each assignment inside a <code>parallel</code> block runs on its own thread; the block waits for all of them. This targets I/O-bound work (HTTP calls, process launches) — CPython's GIL means it does not speed up CPU-bound code. <code>wait N seconds</code> pauses the script.</p>
+
+<h2>Pipelines</h2>
+<pre class="plain">result = run "cat file.txt" -> run "sort"    <span class="c"># real process pipe</span>
+value = 5 -> double(it) -> triple(it)         <span class="c"># generic: `it` is bound to
+                                                 the previous stage's value</span></pre>
+
+<h2>CLI scripts</h2>
+<p><code>arguments</code> is a built-in list of the values passed after the script path (<code>ezy run script.ezy a b c</code> &rarr; <code>arguments</code> is <code>["a", "b", "c"]</code>).</p>
+
+<h2>REPL</h2>
+<pre class="plain">ezy repl</pre>
+<p>An interactive session sharing the same parser and interpreter as scripts. History is kept in <code>~/.ezy_history</code> when <code>readline</code> is available.</p>
+
+<h2>Exit codes</h2>
+<table>
+<tr><th>Code</th><th>Meaning</th></tr>
+<tr><td>0</td><td>success</td></tr>
+<tr><td>1</td><td>syntax error</td></tr>
+<tr><td>2</td><td>runtime error</td></tr>
+<tr><td>64</td><td>invalid CLI usage</td></tr>
+<tr><td>130</td><td>interrupted (Ctrl+C)</td></tr>
+</table>
+
+<h2>Reserved words</h2>
+<p><code>and or not true false null if otherwise for each in from to repeat times while break continue function return say use try catch create folder file write append delete list exists environment set run with arguments get post put patch download save as header query timeout seconds json parallel matches is read wait send successful failed let const</code></p>
+<p>These cannot be used as variable or function names. <code>files</code> is <em>not</em> reserved — it's recognized contextually only right after <code>list</code> — so <code>files = list files in "."</code> works as written.</p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>MIT License</div>
+    <div>Ayush Singh</div>
+    <div><a href="https://github.com/SinghCod3r/ezy">github.com/SinghCod3r/ezy</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

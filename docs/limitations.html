@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Limitations — Ezy</title>
+<meta name="description" content="What's implemented, partial, and planned in Ezy, plus deliberate deviations from the original design brief.">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js" defer></script>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="wordmark" href="index.html">ezy</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="language.html">Language</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="security.html">Security</a>
+      <a href="limitations.html" aria-current="page">Limitations</a>
+      <a href="https://github.com/SinghCod3r/ezy">GitHub</a>
+    </div>
+    <button class="theme-toggle" aria-label="Toggle color theme">&#9675;</button>
+  </div>
+</nav>
+
+<main>
+
+<h1>Limitations</h1>
+<p class="lede">"Implemented" means it runs and has a test in <code>tests/</code>. "Partial" means it works for the documented cases and no others. "Planned" means it does not exist yet.</p>
+
+<h2>Implemented</h2>
+<p><strong>Core language:</strong> variables (<code>=</code>, <code>let</code>, <code>const</code>), function-level scoping, all listed types, arithmetic/comparison/logical operators, string interpolation, <code>if</code>/<code>otherwise if</code>/<code>otherwise</code>, <code>for each</code>, <code>for ... from ... to ...</code>, <code>repeat ... times</code>, <code>while</code>, <code>break</code>, <code>continue</code>, functions with default arguments and closures, <code>try</code>/<code>catch</code> with typed errors.</p>
+<p><strong>Filesystem:</strong> <code>create file/folder</code>, <code>write</code>, <code>append</code>, <code>read</code>, <code>delete file/folder</code>, <code>list files in</code>, <code>file/folder ... exists</code>, <code>path(...)</code> with <code>.name</code>/<code>.extension</code>/<code>.parent</code>/<code>.exists</code>.</p>
+<p><strong>Processes:</strong> <code>run "cmd"</code> (no shell), <code>run "cmd" with arguments [...]</code>, <code>with timeout ... seconds</code>, structured results, real process-to-process piping with <code>-&gt;</code>.</p>
+<p><strong>HTTP:</strong> <code>get/post/put/patch/delete</code>, <code>with header {...}</code>, <code>with query {...}</code>, <code>with timeout ... seconds</code>, <code>send json {...}</code>, <code>download</code>/<code>save as</code>, <code>is successful</code>/<code>is failed</code>, TLS always verified, JSON body parsing on <code>.json</code>.</p>
+<p><strong>JSON:</strong> <code>parse_json</code>, <code>to_json</code> (pretty by default); map/list literals are already JSON-shaped.</p>
+<p><strong>Modules:</strong> <code>use "./local_file"</code> (or <code>.ez</code>), built-in module name validation.</p>
+<p><strong>Concurrency:</strong> <code>parallel</code> block (thread-per-assignment, join-all).</p>
+<p><strong>Misc:</strong> <code>matches</code> (regex), <code>wait N seconds</code>, a generic <code>-&gt;</code> pipeline binding <code>it</code>, a CLI (<code>ezy run|check|repl</code>), a REPL, <code>arguments</code> for CLI scripts, defined exit codes.</p>
+<p><strong>Tests:</strong> 118 automated tests covering the lexer, parser, interpreter semantics (scoping, closures, error types, edge cases like division by zero and out-of-range indexing), filesystem operations in isolated temp directories, process execution (missing command, non-zero exit, a real timeout), HTTP against a local test server (no external network required for the suite), and CLI exit codes and argument handling.</p>
+
+<h2>Partial</h2>
+<ul>
+  <li><strong><code>parallel</code></strong> only accepts a flat list of <code>name = expression</code> assignments at its top level — no per-task cancellation, no nested <code>parallel</code>, no timeout on the whole block. It is genuinely threaded, which helps for I/O-bound scripts but does not parallelize CPU-bound Ezy code because of CPython's GIL.</li>
+  <li><strong><code>read</code></strong> only supports UTF-8 text files; a binary file raises a clear <code>FileError</code> rather than crashing unpredictably or silently corrupting data.</li>
+  <li><strong>The REPL's</strong> multi-line block detection is a heuristic, not a full incremental parse. It handles the common cases but can be confused by unusual formatting.</li>
+  <li><strong><code>-&gt;</code> pipelines</strong>: when every stage is a <code>run "..."</code> call, it performs a real OS-level pipe. Otherwise it binds <code>it</code> to the previous value — it does not lazily stream large collections.</li>
+</ul>
+
+<h2>Planned (not implemented)</h2>
+<ul>
+  <li><strong>Package manager</strong> (<code>package install/remove/update/publish</code>). A significant trust boundary — signature verification, lock files, a real registry — a fake or insecure one would be worse than none. <code>use "./local_file"</code> covers the single-project case for now.</li>
+  <li><strong>Formatter</strong> (<code>ezy format</code>). A half-working formatter that occasionally reflows a script incorrectly is worse than none.</li>
+  <li><strong>Linter beyond syntax checking.</strong> <code>ezy check</code> currently validates syntax only.</li>
+  <li><strong>A declarative CLI-definition DSL</strong> (<code>command "name" / argument ... required</code>). Use the built-in <code>arguments</code> list and <code>integer(...)</code>/<code>string(...)</code> conversions directly for now.</li>
+  <li><strong>HEAD/OPTIONS/custom HTTP methods, proxies, client certificates, cookies as a first-class object, HTTP/2/3, streaming responses, resumable downloads, Unix-socket transport.</strong> The HTTP subsystem covers the common REST-client case on top of <code>requests</code>, which itself doesn't support HTTP/2/3 or Unix sockets.</li>
+  <li><strong><code>every N seconds ...</code> recurring scheduler.</strong> A statement that blocks forever running a callback is a meaningfully different execution model (a long-lived service, not a one-shot script) and was left out rather than half-implemented.</li>
+  <li><strong>Windows support.</strong> Development and testing were done on Linux; nothing has been verified on Windows.</li>
+  <li><strong>Bytecode compiler / VM.</strong> The interpreter tree-walks the AST directly — see <a href="architecture.html">Architecture</a>.</li>
+  <li><strong>Sandboxing.</strong> See <a href="security.html">Security</a> — scripts have the same filesystem/process/network access as the OS user running them.</li>
+</ul>
+
+<h2>Deliberate design deviations from the original brief</h2>
+<ul>
+  <li><strong>Pipeline modifiers use explicit function calls over <code>it</code></strong> (<code>-&gt; filter(it, is_even)</code>) rather than a bare-predicate DSL (<code>-&gt; filter age &gt;= 18</code>). A point-free predicate syntax needs its own parsing rules layered onto expressions, which fragments the grammar; routing everything through one expression grammar is more coherent, at the cost of a few extra characters per stage.</li>
+  <li><strong>HTTP request modifiers are trailing <code>with</code>/<code>send</code> clauses</strong> rather than an indented sub-block. This keeps modifiers composable in a single expression instead of only valid as a special statement shape, and reuses map literals instead of inventing a second way to write a map.</li>
+  <li><strong><code>files</code> is a contextual keyword</strong>, recognized only immediately after <code>list</code>, rather than fully reserved — because the canonical example (<code>files = list files in "projects"</code>) uses "files" as both a variable name and part of the syntax on the same line. Every other keyword is fully reserved; this is the one deliberate exception.</li>
+  <li><strong>String interpolation reserves <code>{</code> and <code>}</code></strong> inside string literals, requiring <code>\{</code>/<code>\}</code> for a literal brace. Standard for languages with <code>{}</code> interpolation — building the same data as a map/list literal avoids the issue entirely.</li>
+</ul>
+
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>MIT License</div>
+    <div>Ayush Singh</div>
+    <div><a href="https://github.com/SinghCod3r/ezy">github.com/SinghCod3r/ezy</a></div>
+  </div>
+</footer>
+
+</body>
+</html>
