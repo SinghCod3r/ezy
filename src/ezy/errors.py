@@ -33,7 +33,9 @@ class EzyRuntimeError(EzyError):
     catch block (e.g. "TypeError", "FileError", "HttpError").
     """
 
-    def __init__(self, message: str, error_type: str = "RuntimeError", line: int = 0):
+    def __init__(self, message: str, error_type: str = "RuntimeError", line: int = 0, col: int = 0, filename: str = ""):
+        self.col = col
+        self.filename = filename
         self.error_type = error_type
         self.line = line
         super().__init__(message)

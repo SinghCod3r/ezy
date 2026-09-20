@@ -8,7 +8,8 @@ Tabs are rejected to avoid ambiguous indentation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 from typing import Any, List, Optional
 
 from .errors import EzySyntaxError
@@ -43,6 +44,7 @@ class Token:
     value: Any
     line: int
     col: int
+    comments: List[str] = field(default_factory=list)
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"Token({self.type!r}, {self.value!r}, {self.line}:{self.col})"
@@ -59,6 +61,7 @@ class Lexer:
         self.tokens: List[Token] = []
         self.at_line_start = True
         self.paren_depth = 0
+        self.pending_comments: List[str] = []
 
     def error(self, message: str) -> EzySyntaxError:
         return EzySyntaxError(message, self.filename, self.line, self.col)
@@ -92,14 +95,17 @@ class Lexer:
                 self.advance()
                 continue
             if ch == "#":
+                comment_text = ""
+                self.advance() # consume #
                 while self.peek() not in ("\n", ""):
-                    self.advance()
+                    comment_text += self.advance()
+                self.pending_comments.append(comment_text.strip())
                 continue
             if ch == "\n":
                 nl_line, nl_col = self.line, self.col
                 self.advance()
                 if self.paren_depth == 0:
-                    self.tokens.append(Token("NEWLINE", "\n", nl_line, nl_col))
+                    self._emit("NEWLINE",  "\n", nl_line, nl_col)
                     self.at_line_start = True
                 continue
             if ch in ('"', "'"):
@@ -121,8 +127,14 @@ class Lexer:
         self._emit("EOF", None)
         return self.tokens
 
-    def _emit(self, type_: str, value: Any) -> None:
-        self.tokens.append(Token(type_, value, self.line, self.col))
+    def _emit(self, type_: str, value: Any, line: int = None, col: int = None) -> None:
+        line = line if line is not None else self.line
+        col = col if col is not None else self.col
+        tok = Token(type_, value, line, col)
+        if self.pending_comments:
+            tok.comments = self.pending_comments
+            self.pending_comments = []
+        self.tokens.append(tok)
 
     def _handle_indentation(self) -> None:
         while True:
@@ -133,8 +145,11 @@ class Lexer:
             # blank line or comment-only line: skip without affecting indentation
             if self.peek() in ("\n", "#", ""):
                 if self.peek() == "#":
+                    comment_text = ""
+                    self.advance()
                     while self.peek() not in ("\n", ""):
-                        self.advance()
+                        comment_text += self.advance()
+                    self.pending_comments.append(comment_text.strip())
                 if self.peek() == "\n":
                     self.advance()
                     continue
@@ -194,7 +209,7 @@ class Lexer:
             buf += self.advance()
         if buf or not parts:
             parts.append(buf)
-        self.tokens.append(Token("STRING", parts, line, col))
+        self._emit("STRING",  parts, line, col)
 
     def _read_number(self) -> None:
         line, col = self.line, self.col
@@ -208,7 +223,7 @@ class Lexer:
             while self.peek().isdigit():
                 buf += self.advance()
         value = float(buf) if is_float else int(buf)
-        self.tokens.append(Token("NUMBER", value, line, col))
+        self._emit("NUMBER",  value, line, col)
 
     def _read_name(self) -> None:
         line, col = self.line, self.col
@@ -216,14 +231,14 @@ class Lexer:
         while self.peek().isalnum() or self.peek() == "_":
             buf += self.advance()
         type_ = buf if buf in KEYWORDS else "NAME"
-        self.tokens.append(Token(type_, buf, line, col))
+        self._emit(type_,  buf, line, col)
 
     def _read_symbol(self) -> None:
         line, col = self.line, self.col
         if self.source.startswith("\u2192", self.pos):  # → pipeline arrow
             self.pos += 1
             self.col += 1
-            self.tokens.append(Token("ARROW", "->", line, col))
+            self._emit("ARROW",  "->", line, col)
             return
         for sym, name in SYMBOLS:
             if self.source.startswith(sym, self.pos):
@@ -233,7 +248,7 @@ class Lexer:
                     self.paren_depth += 1
                 elif name in ("RPAREN", "RBRACKET", "RBRACE"):
                     self.paren_depth = max(0, self.paren_depth - 1)
-                self.tokens.append(Token(name, sym, line, col))
+                self._emit(name,  sym, line, col)
                 return
         raise self.error(f"unexpected character {self.peek()!r}")
 

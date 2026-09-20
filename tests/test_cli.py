@@ -47,7 +47,7 @@ def test_run_syntax_error_exit_code(tmp_path):
     script.write_text("if\n")
     result = run_cli(["run", str(script)])
     assert result.returncode == 1
-    assert "syntax error" in result.stderr
+    assert "Syntax Error" in result.stderr
 
 
 def test_run_runtime_error_exit_code(tmp_path):

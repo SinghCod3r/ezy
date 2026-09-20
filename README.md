@@ -45,6 +45,20 @@ ezy repl                       # interactive session
 
 File extensions `.ezy` and `.ez` are both accepted.
 
+
+## Formatting
+
+Ezy includes an AST-based formatter (`ezy fmt`) for the currently supported language constructs. It safely preserves comments by detecting their structural placement.
+
+```bash
+ezy fmt script.ezy
+```
+
+Check if a file requires formatting (useful for CI, exits 1 if unformatted):
+```bash
+ezy fmt --check script.ezy
+```
+
 ## Documentation
 
 - [docs/language.md](docs/language.md) — full language reference

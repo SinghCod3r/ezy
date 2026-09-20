@@ -82,7 +82,7 @@ class Parser:
 
     def parse_statement(self) -> A.Node:
         tok = self.cur()
-        line = tok.line
+        line, col = tok.line, tok.col
         if tok.type in ("let", "const"):
             return self.parse_declaration()
         if tok.type == "if":
@@ -96,11 +96,11 @@ class Parser:
         if tok.type == "break":
             self.advance()
             self.expect("NEWLINE")
-            return A.BreakStatement(line=line)
+            return A.BreakStatement(line=line, col=col)
         if tok.type == "continue":
             self.advance()
             self.expect("NEWLINE")
-            return A.ContinueStatement(line=line)
+            return A.ContinueStatement(line=line, col=col)
         if tok.type == "function":
             return self.parse_function_def()
         if tok.type == "return":
@@ -109,7 +109,7 @@ class Parser:
             if not self.check("NEWLINE"):
                 expr = self.parse_expression()
             self.expect("NEWLINE")
-            return A.ReturnStatement(expr, line=line)
+            return A.ReturnStatement(expr, line=line, col=col)
         if tok.type == "try":
             return self.parse_try()
         if tok.type == "use":
@@ -117,12 +117,12 @@ class Parser:
             name_tok = self.expect("STRING")
             module = "".join(p for p in name_tok.value if isinstance(p, str))
             self.expect("NEWLINE")
-            return A.UseStatement(module, line=line)
+            return A.UseStatement(module, line=line, col=col)
         if tok.type == "say":
             self.advance()
             expr = self.parse_expression()
             self.expect("NEWLINE")
-            return A.SayStatement(expr, line=line)
+            return A.SayStatement(expr, line=line, col=col)
         if tok.type == "create":
             return self.parse_create()
         if tok.type == "write":
@@ -143,20 +143,21 @@ class Parser:
             if self.check("seconds"):
                 self.advance()
             self.expect("NEWLINE")
-            return A.WaitStatement(duration, line=line)
+            return A.WaitStatement(duration, line=line, col=col)
         return self.parse_assignment_or_expr_statement()
 
     def parse_declaration(self) -> A.Node:
-        line = self.cur().line
+        line, col = self.cur().line, self.cur().col
         kind = self.advance().type  # let / const
-        name = self.expect("NAME").value
+        name_tok = self.expect("NAME")
+        name = name_tok.value
         self.expect("ASSIGN")
         value = self.parse_expression()
         self.expect("NEWLINE")
-        return A.Assignment(A.Identifier(name, line=line), value, declared=kind, line=line)
+        return A.Assignment(A.Identifier(name, line=name_tok.line, col=name_tok.col), value, declared=kind, line=line, col=col)
 
     def parse_assignment_or_expr_statement(self) -> A.Node:
-        line = self.cur().line
+        line, col = self.cur().line, self.cur().col
         expr = self.parse_expression()
         if self.check("ASSIGN"):
             if not isinstance(expr, (A.Identifier, A.MemberAccess, A.IndexAccess)):
@@ -164,12 +165,12 @@ class Parser:
             self.advance()
             value = self.parse_expression()
             self.expect("NEWLINE")
-            return A.Assignment(expr, value, line=line)
+            return A.Assignment(expr, value, line=line, col=col)
         self.expect("NEWLINE")
-        return A.ExprStatement(expr, line=line)
+        return A.ExprStatement(expr, line=line, col=col)
 
     def parse_if(self) -> A.Node:
-        line = self.advance().line  # 'if'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'if'
         condition = self.parse_expression()
         then_body = self.parse_block()
         elif_clauses = []
@@ -184,40 +185,40 @@ class Parser:
             else:
                 else_body = self.parse_block()
                 break
-        return A.IfStatement(condition, then_body, elif_clauses, else_body, line=line)
+        return A.IfStatement(condition, then_body, elif_clauses, else_body, line=line, col=col)
 
     def parse_for(self) -> A.Node:
-        line = self.advance().line  # 'for'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'for'
         if self.check("each"):
             self.advance()
             var_name = self.expect("NAME").value
             self.expect("in")
             iterable = self.parse_expression()
             body = self.parse_block()
-            return A.ForEachStatement(var_name, iterable, body, line=line)
+            return A.ForEachStatement(var_name, iterable, body, line=line, col=col)
         var_name = self.expect("NAME").value
         self.expect("from")
         start = self.parse_expression()
         self.expect("to")
         end = self.parse_expression()
         body = self.parse_block()
-        return A.ForRangeStatement(var_name, start, end, body, line=line)
+        return A.ForRangeStatement(var_name, start, end, body, line=line, col=col)
 
     def parse_repeat(self) -> A.Node:
-        line = self.advance().line  # 'repeat'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'repeat'
         count = self.parse_expression()
         self.expect("times")
         body = self.parse_block()
-        return A.RepeatStatement(count, body, line=line)
+        return A.RepeatStatement(count, body, line=line, col=col)
 
     def parse_while(self) -> A.Node:
-        line = self.advance().line  # 'while'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'while'
         condition = self.parse_expression()
         body = self.parse_block()
-        return A.WhileStatement(condition, body, line=line)
+        return A.WhileStatement(condition, body, line=line, col=col)
 
     def parse_function_def(self) -> A.Node:
-        line = self.advance().line  # 'function'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'function'
         name = self.expect("NAME").value
         params = []
         if not self.check("NEWLINE"):
@@ -233,56 +234,56 @@ class Parser:
                     continue
                 break
         body = self.parse_block()
-        return A.FunctionDef(name, params, body, line=line)
+        return A.FunctionDef(name, params, body, line=line, col=col)
 
     def parse_try(self) -> A.Node:
-        line = self.advance().line  # 'try'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'try'
         try_body = self.parse_block()
         self.expect("catch", "expected 'catch' after a try block")
         error_name = None
         if self.check("NAME"):
             error_name = self.advance().value
         catch_body = self.parse_block()
-        return A.TryStatement(try_body, error_name, catch_body, line=line)
+        return A.TryStatement(try_body, error_name, catch_body, line=line, col=col)
 
     def parse_create(self) -> A.Node:
-        line = self.advance().line  # 'create'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'create'
         kind = self.expect_any("file", "folder").type
         path = self.parse_expression()
         self.expect("NEWLINE")
-        return A.CreateFileStatement(kind, path, line=line)
+        return A.CreateFileStatement(kind, path, line=line, col=col)
 
     def parse_write(self, append: bool) -> A.Node:
-        line = self.advance().line  # 'write' / 'append'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'write' / 'append'
         content = self.parse_expression()
         self.expect("to")
         path = self.parse_expression()
         self.expect("NEWLINE")
-        return A.WriteStatement(content, path, append, line=line)
+        return A.WriteStatement(content, path, append, line=line, col=col)
 
     def parse_delete_or_expr_statement(self) -> A.Node:
         save = self.pos
-        line = self.cur().line
+        line, col = self.cur().line, self.cur().col
         self.advance()  # 'delete'
         if self.check_any("file", "folder"):
             kind = self.advance().type
             path = self.parse_expression()
             self.expect("NEWLINE")
-            return A.DeleteStatement(kind, path, line=line)
+            return A.DeleteStatement(kind, path, line=line, col=col)
         self.pos = save
         return self.parse_assignment_or_expr_statement()
 
     def parse_set_environment(self) -> A.Node:
-        line = self.advance().line  # 'set'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'set'
         self.expect("environment")
         name = self.parse_unary()
         self.expect("ASSIGN")
         value = self.parse_expression()
         self.expect("NEWLINE")
-        return A.SetEnvironmentStatement(name, value, line=line)
+        return A.SetEnvironmentStatement(name, value, line=line, col=col)
 
     def parse_download(self) -> A.Node:
-        line = self.advance().line  # 'download'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'download'
         url = self.parse_expression()
         self.expect("NEWLINE")
         self.skip_newlines()
@@ -290,10 +291,10 @@ class Parser:
         self.expect("as")
         save_as = self.parse_expression()
         self.expect("NEWLINE")
-        return A.DownloadStatement(url, save_as, line=line)
+        return A.DownloadStatement(url, save_as, line=line, col=col)
 
     def parse_parallel(self) -> A.Node:
-        line = self.advance().line  # 'parallel'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'parallel'
         self.expect("NEWLINE")
         self.expect("INDENT")
         assignments = []
@@ -307,7 +308,7 @@ class Parser:
             assignments.append(stmt)
             self.skip_newlines()
         self.expect("DEDENT")
-        return A.ParallelStatement(assignments, line=line)
+        return A.ParallelStatement(assignments, line=line, col=col)
 
     def expect_any(self, *types: str) -> Token:
         if self.cur().type not in types:
@@ -330,29 +331,29 @@ class Parser:
         while self.check("ARROW"):
             self.advance()
             stages.append(self.parse_or())
-        return A.PipelineExpr(stages, line=first.line)
+        return A.PipelineExpr(stages, line=first.line, col=first.col)
 
     def parse_or(self) -> A.Node:
         left = self.parse_and()
         while self.check("or"):
-            line = self.advance().line
+            __tok = self.advance(); line, col = __tok.line, __tok.col
             right = self.parse_and()
-            left = A.LogicalOp("or", left, right, line=line)
+            left = A.LogicalOp("or", left, right, line=line, col=col)
         return left
 
     def parse_and(self) -> A.Node:
         left = self.parse_not()
         while self.check("and"):
-            line = self.advance().line
+            __tok = self.advance(); line, col = __tok.line, __tok.col
             right = self.parse_not()
-            left = A.LogicalOp("and", left, right, line=line)
+            left = A.LogicalOp("and", left, right, line=line, col=col)
         return left
 
     def parse_not(self) -> A.Node:
         if self.check("not"):
-            line = self.advance().line
+            __tok = self.advance(); line, col = __tok.line, __tok.col
             operand = self.parse_not()
-            return A.UnaryOp("not", operand, line=line)
+            return A.UnaryOp("not", operand, line=line, col=col)
         return self.parse_comparison()
 
     def parse_comparison(self) -> A.Node:
@@ -360,11 +361,11 @@ class Parser:
         if self.check_any(*COMPARISON_OPS):
             op_tok = self.advance()
             right = self.parse_additive()
-            left = A.BinaryOp(op_tok.type, left, right, line=op_tok.line)
+            left = A.BinaryOp(op_tok.type, left, right, line=op_tok.line, col=op_tok.col)
         elif self.check("matches"):
-            line = self.advance().line
+            __tok = self.advance(); line, col = __tok.line, __tok.col
             pattern = self.parse_additive()
-            left = A.MatchesOp(left, pattern, line=line)
+            left = A.MatchesOp(left, pattern, line=line, col=col)
         left = self._parse_result_postfix(left)
         return left
 
@@ -372,14 +373,14 @@ class Parser:
         if self.check("is"):
             self.advance()
         if self.check("successful"):
-            line = self.advance().line
-            return A.Call(A.Identifier("is_successful", line=line), [expr], line=line)
+            __tok = self.advance(); line, col = __tok.line, __tok.col
+            return A.Call(A.Identifier("is_successful", line=line, col=col), [expr], line=line, col=col)
         if self.check("failed"):
-            line = self.advance().line
-            return A.Call(A.Identifier("is_failed", line=line), [expr], line=line)
+            __tok = self.advance(); line, col = __tok.line, __tok.col
+            return A.Call(A.Identifier("is_failed", line=line, col=col), [expr], line=line, col=col)
         if self.check("exists"):
-            line = self.advance().line
-            return A.Call(A.Identifier("path_exists", line=line), [expr], line=line)
+            __tok = self.advance(); line, col = __tok.line, __tok.col
+            return A.Call(A.Identifier("path_exists", line=line, col=col), [expr], line=line, col=col)
         return expr
 
     def parse_additive(self) -> A.Node:
@@ -387,7 +388,7 @@ class Parser:
         while self.check_any(*ADDITIVE_OPS):
             op_tok = self.advance()
             right = self.parse_multiplicative()
-            left = A.BinaryOp(op_tok.type, left, right, line=op_tok.line)
+            left = A.BinaryOp(op_tok.type, left, right, line=op_tok.line, col=op_tok.col)
         return left
 
     def parse_multiplicative(self) -> A.Node:
@@ -395,14 +396,14 @@ class Parser:
         while self.check_any(*MULT_OPS):
             op_tok = self.advance()
             right = self.parse_unary()
-            left = A.BinaryOp(op_tok.type, left, right, line=op_tok.line)
+            left = A.BinaryOp(op_tok.type, left, right, line=op_tok.line, col=op_tok.col)
         return left
 
     def parse_unary(self) -> A.Node:
         if self.check("MINUS"):
-            line = self.advance().line
+            __tok = self.advance(); line, col = __tok.line, __tok.col
             operand = self.parse_unary()
-            return A.UnaryOp("MINUS", operand, line=line)
+            return A.UnaryOp("MINUS", operand, line=line, col=col)
         return self.parse_postfix()
 
     def parse_postfix(self) -> A.Node:
@@ -411,7 +412,7 @@ class Parser:
             if self.check("DOT"):
                 self.advance()
                 name = self._parse_member_name()
-                expr = A.MemberAccess(expr, name, line=expr.line)
+                expr = A.MemberAccess(expr, name, line=expr.line, col=expr.col)
             elif self.check("LPAREN"):
                 self.advance()
                 args = []
@@ -421,12 +422,12 @@ class Parser:
                         self.advance()
                         args.append(self.parse_expression())
                 self.expect("RPAREN")
-                expr = A.Call(expr, args, line=expr.line)
+                expr = A.Call(expr, args, line=expr.line, col=expr.col)
             elif self.check("LBRACKET"):
                 self.advance()
                 index = self.parse_expression()
                 self.expect("RBRACKET")
-                expr = A.IndexAccess(expr, index, line=expr.line)
+                expr = A.IndexAccess(expr, index, line=expr.line, col=expr.col)
             else:
                 break
         return expr
@@ -442,22 +443,22 @@ class Parser:
         tok = self.cur()
         if tok.type == "NUMBER":
             self.advance()
-            return A.Literal(tok.value, line=tok.line)
+            return A.Literal(tok.value, line=tok.line, col=tok.col)
         if tok.type == "STRING":
             self.advance()
             return self._build_interpolated(tok)
         if tok.type == "true":
             self.advance()
-            return A.Literal(True, line=tok.line)
+            return A.Literal(True, line=tok.line, col=tok.col)
         if tok.type == "false":
             self.advance()
-            return A.Literal(False, line=tok.line)
+            return A.Literal(False, line=tok.line, col=tok.col)
         if tok.type == "null":
             self.advance()
-            return A.Literal(None, line=tok.line)
+            return A.Literal(None, line=tok.line, col=tok.col)
         if tok.type == "NAME":
             self.advance()
-            return A.Identifier(tok.value, line=tok.line)
+            return A.Identifier(tok.value, line=tok.line, col=tok.col)
         if tok.type == "LPAREN":
             self.advance()
             expr = self.parse_expression()
@@ -472,7 +473,7 @@ class Parser:
                     self.advance()
                     items.append(self.parse_expression())
             self.expect("RBRACKET")
-            return A.ListLiteral(items, line=tok.line)
+            return A.ListLiteral(items, line=tok.line, col=tok.col)
         if tok.type == "LBRACE":
             return self._parse_map_literal()
         if tok.type in ("get", "post", "put", "patch", "delete"):
@@ -482,16 +483,16 @@ class Parser:
         if tok.type == "read":
             self.advance()
             path = self.parse_unary()
-            return A.ReadFile(path, line=tok.line)
+            return A.ReadFile(path, line=tok.line, col=tok.col)
         if tok.type == "environment":
             self.advance()
             name = self.parse_unary()
-            return A.EnvironmentGet(name, line=tok.line)
+            return A.EnvironmentGet(name, line=tok.line, col=tok.col)
         if tok.type in ("file", "folder"):
             self.advance()
             path = self.parse_unary()
             self.expect("exists")
-            return A.FileExistsCheck(tok.type, path, line=tok.line)
+            return A.FileExistsCheck(tok.type, path, line=tok.line, col=tok.col)
         if tok.type == "list":
             self.advance()
             files_tok = self.expect("NAME")
@@ -499,10 +500,10 @@ class Parser:
                 raise EzySyntaxError("expected 'files' after 'list'", self.filename, files_tok.line, files_tok.col)
             self.expect("in")
             path = self.parse_unary()
-            return A.Call(A.Identifier("list_files", line=tok.line), [path], line=tok.line)
+            return A.Call(A.Identifier("list_files", line=tok.line, col=tok.col), [path], line=tok.line, col=tok.col)
         if tok.type == "arguments":
             self.advance()
-            return A.Identifier("arguments", line=tok.line)
+            return A.Identifier("arguments", line=tok.line, col=tok.col)
         raise EzySyntaxError(f"unexpected token {tok.type} ({tok.value!r})", self.filename, tok.line, tok.col)
 
     def _build_interpolated(self, tok: Token) -> A.Node:
@@ -516,11 +517,11 @@ class Parser:
             else:
                 parts.append(part)
         if not has_expr and len(parts) == 1:
-            return A.Literal(parts[0], line=tok.line)
-        return A.InterpolatedString(parts, line=tok.line)
+            return A.Literal(parts[0], line=tok.line, col=tok.col)
+        return A.InterpolatedString(parts, line=tok.line, col=tok.col)
 
     def _parse_map_literal(self) -> A.Node:
-        line = self.advance().line  # '{'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # '{'
         pairs = []
         if not self.check("RBRACE"):
             pairs.append(self._parse_map_pair())
@@ -528,14 +529,14 @@ class Parser:
                 self.advance()
                 pairs.append(self._parse_map_pair())
         self.expect("RBRACE")
-        return A.MapLiteral(pairs, line=line)
+        return A.MapLiteral(pairs, line=line, col=col)
 
     def _parse_map_pair(self):
         tok = self.cur()
         if tok.type == "STRING":
             key = self._build_interpolated(self.advance())
         elif tok.type == "NAME" or tok.type in ("true", "false", "null"):
-            key = A.Literal(self.advance().value, line=tok.line)
+            key = A.Literal(self.advance().value, line=tok.line, col=tok.col)
         else:
             raise EzySyntaxError("expected a map key (string or name)", self.filename, tok.line, tok.col)
         self.expect("COLON")
@@ -572,7 +573,7 @@ class Parser:
                 self.expect("json")
                 value = self.parse_or()
                 modifiers.append(("json_body", value))
-        return A.HttpRequest(method, url, modifiers, line=tok.line)
+        return A.HttpRequest(method, url, modifiers, line=tok.line, col=tok.col)
 
     def _parse_kv_or_map(self, kind: str):
         key_or_map = self.parse_or()
@@ -583,7 +584,7 @@ class Parser:
         return (f"{kind}_map", key_or_map)
 
     def _parse_run_process(self) -> A.Node:
-        line = self.advance().line  # 'run'
+        __tok = self.advance(); line, col = __tok.line, __tok.col  # 'run'
         command = self.parse_unary()
         modifiers = []
         while self.check("with"):
@@ -603,7 +604,7 @@ class Parser:
                     "expected 'arguments' or 'timeout' after 'with'",
                     self.filename, self.cur().line, self.cur().col,
                 )
-        return A.RunProcess(command, modifiers, line=line)
+        return A.RunProcess(command, modifiers, line=line, col=col)
 
 
 def parse_embedded_expression(src: str, filename: str, line: int) -> A.Node:

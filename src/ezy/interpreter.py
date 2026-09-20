@@ -115,13 +115,13 @@ class Interpreter:
     def exec_stmt(self, node: A.Node, env: Environment) -> None:
         method = getattr(self, f"exec_{type(node).__name__}", None)
         if method is None:
-            raise EzyRuntimeError(f"cannot execute {type(node).__name__}", "InternalError", node.line)
+            raise EzyRuntimeError(f"cannot execute {type(node).__name__}", "InternalError", node.line, node.col)
         method(node, env)
 
     def eval_expr(self, node: A.Node, env: Environment) -> Any:
         method = getattr(self, f"eval_{type(node).__name__}", None)
         if method is None:
-            raise EzyRuntimeError(f"cannot evaluate {type(node).__name__}", "InternalError", node.line)
+            raise EzyRuntimeError(f"cannot evaluate {type(node).__name__}", "InternalError", node.line, node.col)
         return method(node, env)
 
     # -- statements --------------------------------------------------------
@@ -144,7 +144,7 @@ class Interpreter:
             index = self.eval_expr(target.index, env)
             self._set_index(obj, index, value, node.line)
         else:
-            raise EzyRuntimeError("invalid assignment target", "SyntaxError", node.line)
+            raise EzyRuntimeError("invalid assignment target", "SyntaxError", node.line, node.col)
 
     def exec_ExprStatement(self, node: A.ExprStatement, env: Environment) -> None:
         self.eval_expr(node.expr, env)
@@ -173,7 +173,7 @@ class Interpreter:
         elif isinstance(iterable, dict):
             items = list(iterable.values())
         else:
-            raise EzyRuntimeError("this value cannot be iterated with 'for each'", "TypeError", node.line)
+            raise EzyRuntimeError("this value cannot be iterated with 'for each'", "TypeError", node.line, node.col)
         for item in items:
             env.define_local(node.var_name, item)
             try:
@@ -187,7 +187,7 @@ class Interpreter:
         start = self.eval_expr(node.start, env)
         end = self.eval_expr(node.end, env)
         if not isinstance(start, int) or not isinstance(end, int) or isinstance(start, bool) or isinstance(end, bool):
-            raise EzyRuntimeError("'for ... from ... to ...' requires whole numbers", "TypeError", node.line)
+            raise EzyRuntimeError("'for ... from ... to ...' requires whole numbers", "TypeError", node.line, node.col)
         step = 1 if start <= end else -1
         for n in range(start, end + step, step):
             env.define_local(node.var_name, n)
@@ -201,7 +201,7 @@ class Interpreter:
     def exec_RepeatStatement(self, node: A.RepeatStatement, env: Environment) -> None:
         count = self.eval_expr(node.count, env)
         if not isinstance(count, int) or isinstance(count, bool):
-            raise EzyRuntimeError("'repeat ... times' requires a whole number", "TypeError", node.line)
+            raise EzyRuntimeError("'repeat ... times' requires a whole number", "TypeError", node.line, node.col)
         for _ in range(count):
             try:
                 self.exec_block(node.body, env)
@@ -246,7 +246,7 @@ class Interpreter:
             self._import_local_module(module, env, node.line)
             return
         if module not in BUILTIN_MODULES:
-            raise EzyRuntimeError(f"unknown module: '{module}'", "ModuleError", node.line)
+            raise EzyRuntimeError(f"unknown module: '{module}'", "ModuleError", node.line, node.col)
         # Built-in modules are always available as global functions; `use`
         # documents the dependency and validates the name.
 
@@ -283,7 +283,7 @@ class Interpreter:
         dest = self.eval_expr(node.save_as, env)
         resp = http_mod.download(str(url), str(dest))
         if not resp.ok:
-            raise EzyRuntimeError(f"download failed: {resp.error or resp.status}", "HttpError", node.line)
+            raise EzyRuntimeError(f"download failed: {resp.error or resp.status}", "HttpError", node.line, node.col)
 
     def exec_ParallelStatement(self, node: A.ParallelStatement, env: Environment) -> None:
         def run_one(assign: A.Assignment):
@@ -294,7 +294,7 @@ class Interpreter:
             results = [f.result() for f in futures]
         for assign, value in zip(node.assignments, results):
             if not isinstance(assign.target, A.Identifier):
-                raise EzyRuntimeError("'parallel' assignments must target a simple name", "SyntaxError", node.line)
+                raise EzyRuntimeError("'parallel' assignments must target a simple name", "SyntaxError", node.line, node.col)
             if assign.declared == "const":
                 env.define_const(assign.target.name, value, node.line)
             elif assign.declared == "let":
@@ -305,7 +305,7 @@ class Interpreter:
     def exec_WaitStatement(self, node: A.WaitStatement, env: Environment) -> None:
         duration = self.eval_expr(node.duration, env)
         if not isinstance(duration, (int, float)) or isinstance(duration, bool):
-            raise EzyRuntimeError("'wait' requires a number of seconds", "TypeError", node.line)
+            raise EzyRuntimeError("'wait' requires a number of seconds", "TypeError", node.line, node.col)
         time.sleep(duration)
 
     # -- expressions -------------------------------------------------------
@@ -337,7 +337,7 @@ class Interpreter:
             return env.get(node.name, node.line)
         if node.name in self.builtins:
             return self.builtins[node.name]
-        raise EzyRuntimeError(f"undefined variable: '{node.name}'", "NameError", node.line)
+        raise EzyRuntimeError(f"undefined variable: '{node.name}'", "NameError", node.line, node.col)
 
     def eval_UnaryOp(self, node: A.UnaryOp, env: Environment):
         if node.op == "not":
@@ -345,9 +345,9 @@ class Interpreter:
         value = self.eval_expr(node.operand, env)
         if node.op == "MINUS":
             if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise EzyRuntimeError("'-' requires a number", "TypeError", node.line)
+                raise EzyRuntimeError("'-' requires a number", "TypeError", node.line, node.col)
             return -value
-        raise EzyRuntimeError(f"unknown unary operator '{node.op}'", "InternalError", node.line)
+        raise EzyRuntimeError(f"unknown unary operator '{node.op}'", "InternalError", node.line, node.col)
 
     def eval_LogicalOp(self, node: A.LogicalOp, env: Environment) -> bool:
         left = truthy(self.eval_expr(node.left, env))
@@ -370,14 +370,14 @@ class Interpreter:
         if op == "SLASH":
             self._require_numbers(left, right, "/", node.line)
             if right == 0:
-                raise EzyRuntimeError("division by zero", "MathError", node.line)
+                raise EzyRuntimeError("division by zero", "MathError", node.line, node.col)
             if isinstance(left, int) and isinstance(right, int) and left % right == 0:
                 return left // right
             return left / right
         if op == "PERCENT":
             self._require_numbers(left, right, "%", node.line)
             if right == 0:
-                raise EzyRuntimeError("division by zero", "MathError", node.line)
+                raise EzyRuntimeError("division by zero", "MathError", node.line, node.col)
             return left % right
         if op == "EQ":
             return self._equals(left, right)
@@ -385,17 +385,17 @@ class Interpreter:
             return not self._equals(left, right)
         if op in ("LT", "LE", "GT", "GE"):
             return self._compare(left, right, op, node.line)
-        raise EzyRuntimeError(f"unknown operator '{op}'", "InternalError", node.line)
+        raise EzyRuntimeError(f"unknown operator '{op}'", "InternalError", node.line, node.col)
 
     def eval_MatchesOp(self, node: A.MatchesOp, env: Environment) -> bool:
         left = self.eval_expr(node.left, env)
         pattern = self.eval_expr(node.pattern, env)
         if not isinstance(left, str) or not isinstance(pattern, str):
-            raise EzyRuntimeError("'matches' requires two strings", "TypeError", node.line)
+            raise EzyRuntimeError("'matches' requires two strings", "TypeError", node.line, node.col)
         try:
             return re.search(pattern, left) is not None
         except re.error as exc:
-            raise EzyRuntimeError(f"invalid regular expression: {exc}", "RegexError", node.line) from exc
+            raise EzyRuntimeError(f"invalid regular expression: {exc}", "RegexError", node.line, node.col) from exc
 
     def eval_Call(self, node: A.Call, env: Environment):
         args = [self.eval_expr(a, env) for a in node.args]

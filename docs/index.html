@@ -71,6 +71,38 @@ if response is successful
     </div>
   </section>
 
+
+  <section>
+    <h2>Clear error reporting</h2>
+    <p>When things go wrong, Ezy pinpoints the exact location of the error instead of dumping a stack trace:</p>
+    <div class="panel error-panel" style="background: #2a1111; border-color: #552222;">
+      <pre style="color: #ffcccc;"><code>Error: Syntax Error: expected expression
+
+  backup.ezy:1:18
+
+  1 | files = list files in
+    |                  ^</code></pre>
+    </div>
+  </section>
+
+
+  <section>
+    <h2>Official Formatter</h2>
+    <p>Ezy includes a built-in deterministic formatter (<code>ezy fmt</code>) that standardizes indentation, spacing, and blank lines, while safely preserving your comments.</p>
+    <div class="panel">
+      <p style="color: #aaa; font-size: 0.9em; margin-bottom: 0.5em;">Before:</p>
+      <pre><code># user script
+let   x=10
+if x>5
+ say "big"</code></pre>
+      <p style="color: #aaa; font-size: 0.9em; margin-top: 1em; margin-bottom: 0.5em;">After:</p>
+      <pre><code># user script
+let x = 10
+if x > 5
+    say "big"</code></pre>
+    </div>
+  </section>
+
   <section id="get-started">
     <h2>Get started</h2>
     <ol class="steps">
