@@ -121,3 +121,29 @@ concept — every statement below `docs/limitations.md`'s "Implemented"
 section runs and is covered by an automated test. See that file for
 what is partial or not yet built (a package registry, a formatter, a
 full point-free pipeline DSL, and a few others), and why.
+
+## CLI Scripts
+
+Ezy allows you to create robust CLI applications effortlessly via the built-in `cli` statement. It automatically provides help text generation, type-checking, alias expansion, and argument parsing.
+
+```ezy
+cli "deploy" desc "Deploy the application"
+    flag "verbose" alias "v" desc "Enable verbose output"
+    option "env" default "dev" desc "Deployment environment"
+
+if cli.verbose
+    say "Deploying to {cli.env}"
+```
+
+Simply run your script:
+```sh
+$ ezy run deploy.ezy --help
+Usage: deploy [options] [--] [args...]
+
+Deploy the application
+
+Options:
+  -v, --verbose      Enable verbose output
+  -e, --env          Deployment environment (default: dev)
+  -h, --help         Show this help message
+```

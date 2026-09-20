@@ -333,3 +333,29 @@ class WaitStatement(Node):
     duration: Node
     line: int = 0
     col: int = 0
+
+@dataclass
+class CliFlag(Node):
+    name: str
+    alias: Optional[str]
+    desc: Optional[str]
+    line: int = 0
+    col: int = 0
+
+@dataclass
+class CliOption(Node):
+    name: str
+    alias: Optional[str]
+    default: Optional[Node]
+    required: bool
+    desc: Optional[str]
+    line: int = 0
+    col: int = 0
+
+@dataclass
+class CliDef(Node):
+    name: str
+    desc: Optional[str]
+    body: List[Node]
+    line: int = 0
+    col: int = 0

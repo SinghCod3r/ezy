@@ -1,0 +1,4 @@
+cli "app1"
+    flag "v"
+cli "app2"
+    flag "v"

@@ -60,3 +60,12 @@ class ContinueSignal(EzyControlFlow):
 class ReturnSignal(EzyControlFlow):
     def __init__(self, value):
         self.value = value
+
+class EzyCliArgumentError(Exception):
+    def __init__(self, message: str, usage: str):
+        self.message = message
+        self.usage = usage
+
+class EzyCliHelpRequest(Exception):
+    def __init__(self, help_text: str):
+        self.help_text = help_text

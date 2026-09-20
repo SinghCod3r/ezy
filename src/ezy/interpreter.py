@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Optional
 
 from . import ast_nodes as A
-from .errors import BreakSignal, ContinueSignal, EzyRuntimeError, ReturnSignal
+from .errors import BreakSignal, ContinueSignal, EzyRuntimeError, ReturnSignal, EzyCliArgumentError, EzyCliHelpRequest
 from .parser import parse
 from .values import (BuiltinFunction, EzyErrorValue, EzyModule, EzyPath,
                       Function, HttpResponse, ProcessResult)
@@ -239,6 +239,118 @@ class Interpreter:
             if node.error_name:
                 env.define_local(node.error_name, EzyErrorValue(exc.error_type, exc.message))
             self.exec_block(node.catch_body, env)
+
+
+    def exec_CliDef(self, node: A.CliDef, env: Environment) -> None:
+        if env.parent is not None:
+            raise EzyRuntimeError("cli block must be at the top level", "CliError", node.line, node.col)
+        if "cli" in env.vars:
+            raise EzyRuntimeError("only one cli block is permitted", "CliError", node.line, node.col)
+
+        flags = {}
+        options = {}
+        aliases = {}
+
+        for item in node.body:
+            if item.name in flags or item.name in options:
+                raise EzyRuntimeError(f"duplicate cli parameter '{item.name}'", "CliError", item.line, item.col)
+            if isinstance(item, A.CliFlag):
+                flags[item.name] = item
+            else:
+                options[item.name] = item
+
+            if item.alias:
+                if item.alias in aliases or item.alias in flags or item.alias in options:
+                    raise EzyRuntimeError(f"duplicate cli alias '{item.alias}'", "CliError", item.line, item.col)
+                aliases[item.alias] = item.name
+
+        def generate_help():
+            lines = [f"Usage: {node.name} [options] [--] [args...]", ""]
+            if node.desc:
+                lines.extend([node.desc, ""])
+            lines.append("Options:")
+            for f in flags.values():
+                short = f"-{f.alias}, " if f.alias else "    "
+                desc = f.desc or ""
+                lines.append(f"  {short}--{f.name:<12} {desc}")
+            for o in options.values():
+                short = f"-{o.alias}, " if o.alias else "    "
+                desc = o.desc or ""
+                if o.required:
+                    desc += " (required)"
+                elif o.default:
+                    desc += " (default: ...)"
+                lines.append(f"  {short}--{o.name:<12} {desc}")
+            lines.append("  -h, --help           Show this help message")
+            return "\n".join(lines)
+
+        cli_map = {"args": []}
+        for f in flags: cli_map[f] = False
+        for o, opt in options.items():
+            if opt.default:
+                cli_map[o] = self.eval_expr(opt.default, env)
+            else:
+                cli_map[o] = None
+
+        args = self.arguments[:]
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            if arg == "--":
+                cli_map["args"].extend(args[i+1:])
+                break
+
+            if arg in ("-h", "--help"):
+                raise EzyCliHelpRequest(generate_help())
+
+            if arg.startswith("--"):
+                if "=" in arg:
+                    k, v = arg[2:].split("=", 1)
+                    if k in options:
+                        cli_map[k] = v
+                    elif k in flags:
+                        raise EzyCliArgumentError(f"unknown option '--{k}'", generate_help())
+                    else:
+                        raise EzyCliArgumentError(f"unknown option '--{k}'", generate_help())
+                    i += 1
+                else:
+                    k = arg[2:]
+                    if k in flags:
+                        cli_map[k] = True
+                        i += 1
+                    elif k in options:
+                        if i + 1 >= len(args):
+                            raise EzyCliArgumentError(f"option '--{k}' requires a value", generate_help())
+                        cli_map[k] = args[i+1]
+                        i += 2
+                    else:
+                        raise EzyCliArgumentError(f"unknown option '--{k}'", generate_help())
+
+            elif arg.startswith("-") and arg != "-":
+                k = arg[1:]
+                if k in aliases:
+                    k = aliases[k]
+
+                if k in flags:
+                    cli_map[k] = True
+                    i += 1
+                elif k in options:
+                    if i + 1 >= len(args):
+                        raise EzyCliArgumentError(f"option '-{arg[1:]}' requires a value", generate_help())
+                    cli_map[k] = args[i+1]
+                    i += 2
+                else:
+                    raise EzyCliArgumentError(f"unknown option '-{arg[1:]}'", generate_help())
+            else:
+                cli_map["args"].append(arg)
+                i += 1
+
+        for o, opt in options.items():
+            if opt.required and cli_map[o] is None and opt.default is None:
+                raise EzyCliArgumentError(f"missing required option '--{o}'", generate_help())
+
+        env.define_local("cli", cli_map)
+
 
     def exec_UseStatement(self, node: A.UseStatement, env: Environment) -> None:
         module = node.module

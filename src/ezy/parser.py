@@ -144,18 +144,64 @@ class Parser:
                 self.advance()
             self.expect("NEWLINE")
             return A.WaitStatement(duration, line=line, col=col)
+        if self.check("NAME") and self.cur().value == "cli":
+            if self.pos + 1 < len(self.tokens) and self.tokens[self.pos + 1].type == "STRING":
+                return self.parse_cli_def()
         return self.parse_assignment_or_expr_statement()
+
+
+    def parse_cli_def(self) -> A.Node:
+        tok = self.advance() # 'cli'
+        name_tok = self.expect("STRING")
+        name = "".join(p for p in name_tok.value if isinstance(p, str))
+        desc = None
+        if self.check("NAME") and self.cur().value == "desc":
+            self.advance()
+            desc = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
+
+        self.expect("NEWLINE")
+        self.expect("INDENT")
+        body = []
+        while not self.check("DEDENT") and not self.check("EOF"):
+            if self.check("NAME") and self.cur().value == "flag":
+                ftok = self.advance()
+                fname = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
+                falias = None
+                fdesc = None
+                while self.check("NAME") and self.cur().value in ("alias", "desc"):
+                    mod = self.advance().value
+                    if mod == "alias": falias = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
+                    elif mod == "desc": fdesc = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
+                self.expect("NEWLINE")
+                body.append(A.CliFlag(fname, falias, fdesc, line=ftok.line, col=ftok.col))
+            elif self.check("NAME") and self.cur().value == "option":
+                otok = self.advance()
+                oname = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
+                oalias = None
+                odefault = None
+                orequired = False
+                odesc = None
+                while self.check("NAME") and self.cur().value in ("alias", "default", "required", "desc"):
+                    mod = self.advance().value
+                    if mod == "alias": oalias = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
+                    elif mod == "default": odefault = self.parse_expression()
+                    elif mod == "required": orequired = True
+                    elif mod == "desc": odesc = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
+                self.expect("NEWLINE")
+                body.append(A.CliOption(oname, oalias, odefault, orequired, odesc, line=otok.line, col=otok.col))
+            else:
+                raise EzySyntaxError("expected 'flag' or 'option' inside cli block", self.filename, self.cur().line, self.cur().col)
+        self.expect("DEDENT")
+        return A.CliDef(name, desc, body, line=tok.line, col=tok.col)
 
     def parse_declaration(self) -> A.Node:
         line, col = self.cur().line, self.cur().col
         kind = self.advance().type  # let / const
-        name = self.expect("NAME").value
         name_tok = self.expect("NAME")
-        name = name_tok.value
+        name = "".join(p for p in name_tok.value if isinstance(p, str))
         self.expect("ASSIGN")
         value = self.parse_expression()
         self.expect("NEWLINE")
-        return A.Assignment(A.Identifier(name, line=line, col=col), value, declared=kind, line=line, col=col)
         return A.Assignment(A.Identifier(name, line=name_tok.line, col=name_tok.col), value, declared=kind, line=line, col=col)
 
     def parse_assignment_or_expr_statement(self) -> A.Node:
@@ -273,6 +319,9 @@ class Parser:
             self.expect("NEWLINE")
             return A.DeleteStatement(kind, path, line=line, col=col)
         self.pos = save
+        if self.check("NAME") and self.cur().value == "cli":
+            if self.pos + 1 < len(self.tokens) and self.tokens[self.pos + 1].type == "STRING":
+                return self.parse_cli_def()
         return self.parse_assignment_or_expr_statement()
 
     def parse_set_environment(self) -> A.Node:

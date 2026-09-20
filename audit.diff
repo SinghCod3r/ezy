@@ -1,0 +1,419 @@
+diff --git a/README.md b/README.md
+index 6997114..32e92e1 100644
+--- a/README.md
++++ b/README.md
+@@ -121,3 +121,29 @@ concept — every statement below `docs/limitations.md`'s "Implemented"
+ section runs and is covered by an automated test. See that file for
+ what is partial or not yet built (a package registry, a formatter, a
+ full point-free pipeline DSL, and a few others), and why.
++
++## CLI Scripts
++
++Ezy allows you to create robust CLI applications effortlessly via the built-in `cli` statement. It automatically provides help text generation, type-checking, alias expansion, and argument parsing.
++
++```ezy
++cli "deploy" desc "Deploy the application"
++    flag "verbose" alias "v" desc "Enable verbose output"
++    option "env" default "dev" desc "Deployment environment"
++
++if cli.verbose
++    say "Deploying to {cli.env}"
++```
++
++Simply run your script:
++```sh
++$ ezy run deploy.ezy --help
++Usage: deploy [options] [--] [args...]
++
++Deploy the application
++
++Options:
++  -v, --verbose      Enable verbose output
++  -e, --env          Deployment environment (default: dev)
++  -h, --help         Show this help message
++```
+diff --git a/docs/index.html b/docs/index.html
+index fce5ba7..8223bb7 100644
+--- a/docs/index.html
++++ b/docs/index.html
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+-<title>Ezy — a readable scripting language for automation</title>
++<title>Ezy — a readable script</title>
+ <meta name="description" content="Ezy is a readable, deterministic scripting language for automation: files, processes, HTTP, and JSON as first-class citizens.">
+ <link rel="stylesheet" href="assets/style.css">
+ <script src="assets/theme.js" defer></script>
+@@ -12,6 +12,9 @@
+ 
+ <nav class="site-nav">
+   <div class="nav-inner">
++    <div style="text-align: center; margin-top: 3rem; margin-bottom: 2rem;">
++      <!-- <img src="assets/ezy_logo.png" alt="Ezy Logo" style="width: 50px; padding: 10px; margin-top: 0%; margin-bottom: 0%;" /> -->
++    </div>
+     <a class="wordmark" href="index.html">ezy</a>
+     <div class="nav-links">
+       <a href="index.html" aria-current="page">Home</a>
+@@ -28,10 +31,6 @@
+ <main class="wide">
+ 
+   <section>
+-
+-    <div style="text-align: center; margin-top: 3rem; margin-bottom: 2rem;">
+-      <img src="assets/ezy_logo.png" alt="Ezy Logo" style="max-width: 300px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);" />
+-    </div>
+     <h1>A scripting language you can read like instructions.</h1>
+     <p class="lede">Ezy is built for automation — files, processes, HTTP,
+        and JSON are first-class, the syntax stays close to plain English
+diff --git a/reference/language.md b/reference/language.md
+index 1fa3b48..7b9e287 100644
+--- a/reference/language.md
++++ b/reference/language.md
+@@ -313,3 +313,21 @@ const`
+ These cannot be used as variable or function names. `files` is *not*
+ reserved (it is recognized contextually only right after `list`), so
+ `files = list files in "."` works as written.
++
++## CLI Scripts
++
++Ezy allows you to create robust CLI applications effortlessly via the built-in `cli` statement. It automatically provides help text generation, type-checking, alias expansion, and argument parsing.
++
++```ezy
++cli "deploy" desc "Deploy the application"
++    flag "verbose" alias "v" desc "Enable verbose output"
++    option "env" default "dev" desc "Deployment environment"
++
++if cli.verbose
++    say "Deploying to {cli.env}"
++```
++
++The parsed arguments, flags, and options are automatically bound to the global `cli` object:
++- `cli.verbose`: A boolean indicating if the flag was passed.
++- `cli.env`: A string with the option value (or default).
++- `cli.args`: A list of all remaining positional arguments.
+diff --git a/src/ezy/ast_nodes.py b/src/ezy/ast_nodes.py
+index 04f5f7c..ca60cee 100644
+--- a/src/ezy/ast_nodes.py
++++ b/src/ezy/ast_nodes.py
+@@ -333,3 +333,29 @@ class WaitStatement(Node):
+     duration: Node
+     line: int = 0
+     col: int = 0
++
++@dataclass
++class CliFlag(Node):
++    name: str
++    alias: Optional[str]
++    desc: Optional[str]
++    line: int = 0
++    col: int = 0
++
++@dataclass
++class CliOption(Node):
++    name: str
++    alias: Optional[str]
++    default: Optional[Node]
++    required: bool
++    desc: Optional[str]
++    line: int = 0
++    col: int = 0
++
++@dataclass
++class CliDef(Node):
++    name: str
++    desc: Optional[str]
++    body: List[Node]
++    line: int = 0
++    col: int = 0
+diff --git a/src/ezy/cli.py b/src/ezy/cli.py
+index 0cea1bb..60059ec 100644
+--- a/src/ezy/cli.py
++++ b/src/ezy/cli.py
+@@ -15,7 +15,7 @@ import sys
+ from typing import List, Optional
+ 
+ from . import __version__
+-from .errors import EzyRuntimeError, EzySyntaxError
++from .errors import EzyRuntimeError, EzySyntaxError, EzyCliArgumentError, EzyCliHelpRequest, EzyCliArgumentError, EzyCliHelpRequest, EzyCliArgumentError, EzyCliHelpRequest
+ from .interpreter import Interpreter
+ from .parser import parse
+ from .linter import lint_program
+@@ -94,6 +94,22 @@ def run_file(path: str, script_args: List[str]) -> int:
+     interp.arguments = script_args
+     try:
+         interp.run(program)
++
++    except EzyCliHelpRequest as exc:
++        print(exc.help_text)
++        return 0
++    except EzyCliArgumentError as exc:
++        print(f"error: {exc.message}\n", file=sys.stderr)
++        print(exc.usage, file=sys.stderr)
++        return 2
++
++    except EzyCliHelpRequest as exc:
++        print(exc.help_text)
++        return 0
++    except EzyCliArgumentError as exc:
++        print(f"error: {exc.message}\n", file=sys.stderr)
++        print(exc.usage, file=sys.stderr)
++        return 2
+     except EzyRuntimeError as exc:
+         if not getattr(exc, "filename", ""):
+             exc.filename = path
+diff --git a/src/ezy/errors.py b/src/ezy/errors.py
+index b6826d1..55a1585 100644
+--- a/src/ezy/errors.py
++++ b/src/ezy/errors.py
+@@ -60,3 +60,12 @@ class ContinueSignal(EzyControlFlow):
+ class ReturnSignal(EzyControlFlow):
+     def __init__(self, value):
+         self.value = value
++
++class EzyCliArgumentError(Exception):
++    def __init__(self, message: str, usage: str):
++        self.message = message
++        self.usage = usage
++
++class EzyCliHelpRequest(Exception):
++    def __init__(self, help_text: str):
++        self.help_text = help_text
+diff --git a/src/ezy/interpreter.py b/src/ezy/interpreter.py
+index d5a91ed..4c10ae4 100644
+--- a/src/ezy/interpreter.py
++++ b/src/ezy/interpreter.py
+@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
+ from typing import Any, Callable, Dict, List, Optional
+ 
+ from . import ast_nodes as A
+-from .errors import BreakSignal, ContinueSignal, EzyRuntimeError, ReturnSignal
++from .errors import BreakSignal, ContinueSignal, EzyRuntimeError, ReturnSignal, EzyCliArgumentError, EzyCliHelpRequest
+ from .parser import parse
+ from .values import (BuiltinFunction, EzyErrorValue, EzyModule, EzyPath,
+                       Function, HttpResponse, ProcessResult)
+@@ -240,6 +240,118 @@ class Interpreter:
+                 env.define_local(node.error_name, EzyErrorValue(exc.error_type, exc.message))
+             self.exec_block(node.catch_body, env)
+ 
++
++    def exec_CliDef(self, node: A.CliDef, env: Environment) -> None:
++        if env.parent is not None:
++            raise EzyRuntimeError("cli block must be at the top level", "CliError", node.line, node.col)
++        if "cli" in env.vars:
++            raise EzyRuntimeError("only one cli block is permitted", "CliError", node.line, node.col)
++            
++        flags = {}
++        options = {}
++        aliases = {}
++        
++        for item in node.body:
++            if item.name in flags or item.name in options:
++                raise EzyRuntimeError(f"duplicate cli parameter '{item.name}'", "CliError", item.line, item.col)
++            if isinstance(item, A.CliFlag):
++                flags[item.name] = item
++            else:
++                options[item.name] = item
++                
++            if item.alias:
++                if item.alias in aliases or item.alias in flags or item.alias in options:
++                    raise EzyRuntimeError(f"duplicate cli alias '{item.alias}'", "CliError", item.line, item.col)
++                aliases[item.alias] = item.name
++
++        def generate_help():
++            lines = [f"Usage: {node.name} [options] [--] [args...]", ""]
++            if node.desc:
++                lines.extend([node.desc, ""])
++            lines.append("Options:")
++            for f in flags.values():
++                short = f"-{f.alias}, " if f.alias else "    "
++                desc = f.desc or ""
++                lines.append(f"  {short}--{f.name:<12} {desc}")
++            for o in options.values():
++                short = f"-{o.alias}, " if o.alias else "    "
++                desc = o.desc or ""
++                if o.required:
++                    desc += " (required)"
++                elif o.default:
++                    desc += " (default: ...)"
++                lines.append(f"  {short}--{o.name:<12} {desc}")
++            lines.append("  -h, --help           Show this help message")
++            return "\n".join(lines)
++
++        cli_map = {"args": []}
++        for f in flags: cli_map[f] = False
++        for o, opt in options.items():
++            if opt.default:
++                cli_map[o] = self.eval_expr(opt.default, env)
++            else:
++                cli_map[o] = None
++        
++        args = self.arguments[:]
++        i = 0
++        while i < len(args):
++            arg = args[i]
++            if arg == "--":
++                cli_map["args"].extend(args[i+1:])
++                break
++                
++            if arg in ("-h", "--help"):
++                raise EzyCliHelpRequest(generate_help())
++                
++            if arg.startswith("--"):
++                if "=" in arg:
++                    k, v = arg[2:].split("=", 1)
++                    if k in options:
++                        cli_map[k] = v
++                    elif k in flags:
++                        raise EzyCliArgumentError(f"unknown option '--{k}'", generate_help())
++                    else:
++                        raise EzyCliArgumentError(f"unknown option '--{k}'", generate_help())
++                    i += 1
++                else:
++                    k = arg[2:]
++                    if k in flags:
++                        cli_map[k] = True
++                        i += 1
++                    elif k in options:
++                        if i + 1 >= len(args):
++                            raise EzyCliArgumentError(f"option '--{k}' requires a value", generate_help())
++                        cli_map[k] = args[i+1]
++                        i += 2
++                    else:
++                        raise EzyCliArgumentError(f"unknown option '--{k}'", generate_help())
++                        
++            elif arg.startswith("-") and arg != "-":
++                k = arg[1:]
++                if k in aliases:
++                    k = aliases[k]
++                    
++                if k in flags:
++                    cli_map[k] = True
++                    i += 1
++                elif k in options:
++                    if i + 1 >= len(args):
++                        raise EzyCliArgumentError(f"option '-{arg[1:]}' requires a value", generate_help())
++                    cli_map[k] = args[i+1]
++                    i += 2
++                else:
++                    raise EzyCliArgumentError(f"unknown option '-{arg[1:]}'", generate_help())
++            else:
++                cli_map["args"].append(arg)
++                i += 1
++                
++        for o, opt in options.items():
++            if opt.required and cli_map[o] is None and opt.default is None:
++                raise EzyCliArgumentError(f"missing required option '--{o}'", generate_help())
++                
++        env.define_local("cli", cli_map)
++
++
+     def exec_UseStatement(self, node: A.UseStatement, env: Environment) -> None:
+         module = node.module
+         if module.startswith("./") or module.startswith("../"):
+diff --git a/src/ezy/linter.py b/src/ezy/linter.py
+index fd62f76..584d6d2 100644
+--- a/src/ezy/linter.py
++++ b/src/ezy/linter.py
+@@ -154,6 +154,19 @@ class Linter:
+             self.visit(stage)
+             self.current_scope = old
+ 
++
++    def visit_CliDef(self, node: A.CliDef):
++        self.current_scope.vars["cli"] = ("let", node.line, node.col)
++        for child in node.body:
++            self.visit(child)
++            
++    def visit_CliFlag(self, node: A.CliFlag):
++        pass
++        
++    def visit_CliOption(self, node: A.CliOption):
++        if node.default:
++            self.visit(node.default)
++
+     def visit_IfStatement(self, node: A.IfStatement):
+         self.visit(node.condition)
+         self.visit_list(node.then_body)
+diff --git a/src/ezy/parser.py b/src/ezy/parser.py
+index 82acd72..82fbb8a 100644
+--- a/src/ezy/parser.py
++++ b/src/ezy/parser.py
+@@ -144,18 +144,64 @@ class Parser:
+                 self.advance()
+             self.expect("NEWLINE")
+             return A.WaitStatement(duration, line=line, col=col)
++        if self.check("NAME") and self.cur().value == "cli":
++            if self.pos + 1 < len(self.tokens) and self.tokens[self.pos + 1].type == "STRING":
++                return self.parse_cli_def()
+         return self.parse_assignment_or_expr_statement()
+ 
++
++    def parse_cli_def(self) -> A.Node:
++        tok = self.advance() # 'cli'
++        name_tok = self.expect("STRING")
++        name = "".join(p for p in name_tok.value if isinstance(p, str))
++        desc = None
++        if self.check("NAME") and self.cur().value == "desc":
++            self.advance()
++            desc = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
++            
++        self.expect("NEWLINE")
++        self.expect("INDENT")
++        body = []
++        while not self.check("DEDENT") and not self.check("EOF"):
++            if self.check("NAME") and self.cur().value == "flag":
++                ftok = self.advance()
++                fname = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
++                falias = None
++                fdesc = None
++                while self.check("NAME") and self.cur().value in ("alias", "desc"):
++                    mod = self.advance().value
++                    if mod == "alias": falias = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
++                    elif mod == "desc": fdesc = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
++                self.expect("NEWLINE")
++                body.append(A.CliFlag(fname, falias, fdesc, line=ftok.line, col=ftok.col))
++            elif self.check("NAME") and self.cur().value == "option":
++                otok = self.advance()
++                oname = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
++                oalias = None
++                odefault = None
++                orequired = False
++                odesc = None
++                while self.check("NAME") and self.cur().value in ("alias", "default", "required", "desc"):
++                    mod = self.advance().value
++                    if mod == "alias": oalias = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
++                    elif mod == "default": odefault = self.parse_expression()
++                    elif mod == "required": orequired = True
++                    elif mod == "desc": odesc = "".join(p for p in self.expect("STRING").value if isinstance(p, str))
++                self.expect("NEWLINE")
++                body.append(A.CliOption(oname, oalias, odefault, orequired, odesc, line=otok.line, col=otok.col))
++            else:
++                raise EzySyntaxError("expected 'flag' or 'option' inside cli block", self.filename, self.cur().line, self.cur().col)
++        self.expect("DEDENT")
++        return A.CliDef(name, desc, body, line=tok.line, col=tok.col)
++
+     def parse_declaration(self) -> A.Node:
+         line, col = self.cur().line, self.cur().col
+         kind = self.advance().type  # let / const
+-        name = self.expect("NAME").value
+         name_tok = self.expect("NAME")
+-        name = name_tok.value
++        name = "".join(p for p in name_tok.value if isinstance(p, str))
+         self.expect("ASSIGN")
+         value = self.parse_expression()
+         self.expect("NEWLINE")
+-        return A.Assignment(A.Identifier(name, line=line, col=col), value, declared=kind, line=line, col=col)
+         return A.Assignment(A.Identifier(name, line=name_tok.line, col=name_tok.col), value, declared=kind, line=line, col=col)
+ 
+     def parse_assignment_or_expr_statement(self) -> A.Node:
+@@ -273,6 +319,9 @@ class Parser:
+             self.expect("NEWLINE")
+             return A.DeleteStatement(kind, path, line=line, col=col)
+         self.pos = save
++        if self.check("NAME") and self.cur().value == "cli":
++            if self.pos + 1 < len(self.tokens) and self.tokens[self.pos + 1].type == "STRING":
++                return self.parse_cli_def()
+         return self.parse_assignment_or_expr_statement()
+ 
+     def parse_set_environment(self) -> A.Node:

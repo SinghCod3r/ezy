@@ -152,6 +152,38 @@ class Formatter:
         elif isinstance(stmt, A.WaitStatement):
             return comments + indent + f"wait {self.format_expr(stmt.duration)} seconds" + inline
         
+        elif isinstance(stmt, A.CliDef):
+            res = f"cli \"{stmt.name}\""
+            if stmt.desc:
+                res += f" desc \"{stmt.desc}\""
+            out_parts = [comments + indent + res + inline]
+            
+            for child in stmt.body:
+                ind2 = indent + "    "
+                cc = self.get_standalone_comments(child.line)
+                if cc:
+                    cc = "".join(ind2 + line + "\n" for line in cc.strip().split("\n"))
+                ic = self.get_inline_comments(child.line)
+                
+                if isinstance(child, A.CliFlag):
+                    line_str = f"flag \"{child.name}\""
+                    if child.alias:
+                        line_str += f" alias \"{child.alias}\""
+                    if child.desc:
+                        line_str += f" desc \"{child.desc}\""
+                    out_parts.append(cc + ind2 + line_str + ic)
+                elif isinstance(child, A.CliOption):
+                    line_str = f"option \"{child.name}\""
+                    if child.alias:
+                        line_str += f" alias \"{child.alias}\""
+                    if child.default:
+                        line_str += f" default {self.format_expr(child.default)}"
+                    if child.required:
+                        line_str += " required"
+                    if child.desc:
+                        line_str += f" desc \"{child.desc}\""
+                    out_parts.append(cc + ind2 + line_str + ic)
+            return "\n".join(out_parts)
         raise ValueError(f"Formatter unsupported statement: {type(stmt).__name__}")
 
     def format_block(self, stmts: List[A.Node], indent_level: int) -> str:

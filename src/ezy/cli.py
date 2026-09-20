@@ -15,7 +15,7 @@ import sys
 from typing import List, Optional
 
 from . import __version__
-from .errors import EzyRuntimeError, EzySyntaxError
+from .errors import EzyRuntimeError, EzySyntaxError, EzyCliArgumentError, EzyCliHelpRequest, EzyCliArgumentError, EzyCliHelpRequest, EzyCliArgumentError, EzyCliHelpRequest
 from .interpreter import Interpreter
 from .parser import parse
 from .linter import lint_program
@@ -94,6 +94,22 @@ def run_file(path: str, script_args: List[str]) -> int:
     interp.arguments = script_args
     try:
         interp.run(program)
+
+    except EzyCliHelpRequest as exc:
+        print(exc.help_text)
+        return 0
+    except EzyCliArgumentError as exc:
+        print(f"error: {exc.message}\n", file=sys.stderr)
+        print(exc.usage, file=sys.stderr)
+        return 2
+
+    except EzyCliHelpRequest as exc:
+        print(exc.help_text)
+        return 0
+    except EzyCliArgumentError as exc:
+        print(f"error: {exc.message}\n", file=sys.stderr)
+        print(exc.usage, file=sys.stderr)
+        return 2
     except EzyRuntimeError as exc:
         if not getattr(exc, "filename", ""):
             exc.filename = path

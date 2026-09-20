@@ -313,3 +313,21 @@ const`
 These cannot be used as variable or function names. `files` is *not*
 reserved (it is recognized contextually only right after `list`), so
 `files = list files in "."` works as written.
+
+## CLI Scripts
+
+Ezy allows you to create robust CLI applications effortlessly via the built-in `cli` statement. It automatically provides help text generation, type-checking, alias expansion, and argument parsing.
+
+```ezy
+cli "deploy" desc "Deploy the application"
+    flag "verbose" alias "v" desc "Enable verbose output"
+    option "env" default "dev" desc "Deployment environment"
+
+if cli.verbose
+    say "Deploying to {cli.env}"
+```
+
+The parsed arguments, flags, and options are automatically bound to the global `cli` object:
+- `cli.verbose`: A boolean indicating if the flag was passed.
+- `cli.env`: A string with the option value (or default).
+- `cli.args`: A list of all remaining positional arguments.

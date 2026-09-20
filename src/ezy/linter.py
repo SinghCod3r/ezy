@@ -70,9 +70,9 @@ class Linter:
             if is_unreachable and not reported_unreachable:
                 self.report(stmt.line, stmt.col, "warning", "W203", "unreachable code after 'return', 'break', or 'continue'")
                 reported_unreachable = True
-            
+
             self.visit(stmt)
-            
+
             if isinstance(stmt, (A.ReturnStatement, A.BreakStatement, A.ContinueStatement)):
                 is_unreachable = True
 
@@ -96,7 +96,7 @@ class Linter:
 
     def visit_Assignment(self, node: A.Assignment):
         self.visit(node.value)
-        
+
         target = node.target
         if isinstance(target, A.Identifier):
             name = target.name
@@ -127,20 +127,20 @@ class Linter:
 
     def visit_FunctionDef(self, node: A.FunctionDef):
         self.current_scope.vars[node.name] = ("let", node.line, node.col)
-        
+
         for _, default_val in node.params:
             if default_val:
                 self.visit(default_val)
-                
+
         old_scope = self.current_scope
         self.current_scope = Scope(parent=old_scope)
-        
+
         for param_name, _ in node.params:
             self.current_scope.vars[param_name] = ("param", node.line, node.col)
-            
+
         self.visit_list(node.body)
         self._check_unused(self.current_scope)
-        
+
         self.current_scope = old_scope
 
     def visit_PipelineExpr(self, node: A.PipelineExpr):
@@ -153,6 +153,19 @@ class Linter:
             self.current_scope.vars["it"] = ("implicit", stage.line, stage.col)
             self.visit(stage)
             self.current_scope = old
+
+
+    def visit_CliDef(self, node: A.CliDef):
+        self.current_scope.vars["cli"] = ("let", node.line, node.col)
+        for child in node.body:
+            self.visit(child)
+
+    def visit_CliFlag(self, node: A.CliFlag):
+        pass
+
+    def visit_CliOption(self, node: A.CliOption):
+        if node.default:
+            self.visit(node.default)
 
     def visit_IfStatement(self, node: A.IfStatement):
         self.visit(node.condition)
