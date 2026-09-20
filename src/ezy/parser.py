@@ -149,11 +149,13 @@ class Parser:
     def parse_declaration(self) -> A.Node:
         line, col = self.cur().line, self.cur().col
         kind = self.advance().type  # let / const
+        name = self.expect("NAME").value
         name_tok = self.expect("NAME")
         name = name_tok.value
         self.expect("ASSIGN")
         value = self.parse_expression()
         self.expect("NEWLINE")
+        return A.Assignment(A.Identifier(name, line=line, col=col), value, declared=kind, line=line, col=col)
         return A.Assignment(A.Identifier(name, line=name_tok.line, col=name_tok.col), value, declared=kind, line=line, col=col)
 
     def parse_assignment_or_expr_statement(self) -> A.Node:
