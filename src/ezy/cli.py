@@ -18,6 +18,7 @@ from . import __version__
 from .errors import EzyRuntimeError, EzySyntaxError
 from .interpreter import Interpreter
 from .parser import parse
+from .linter import lint_program
 
 EXIT_OK = 0
 EXIT_SYNTAX_ERROR = 1
@@ -30,6 +31,7 @@ USAGE = """Ezy {version}
 Usage:
   ezy run <script.ezy> [args...]   Run a script
   ezy check <script.ezy>           Check a script for syntax errors\n  ezy fmt [--check] <file.ezy>     Format a script
+  ezy lint <file.ezy>              Lint a script for potential bugs
   ezy repl                         Start an interactive session
   ezy --version                    Print the version
   ezy --help                       Show this message
@@ -115,6 +117,33 @@ def check_file(path: str) -> int:
 
 
 
+
+def lint_file(path: str) -> int:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            source = f.read()
+    except Exception as e:
+        print(f"ezy: cannot read file '{path}': {e}", file=sys.stderr)
+        return EXIT_FILE_ERROR
+
+    try:
+        program = parse(source, path)
+    except EzySyntaxError as e:
+        print(_format_error(e), file=sys.stderr)
+        return EXIT_SYNTAX_ERROR
+
+    findings = lint_program(program, path)
+    if not findings:
+        return 0
+
+    has_error = False
+    for finding in findings:
+        print(str(finding))
+        if finding.severity == "error":
+            has_error = True
+
+    return 2 if has_error else 0
+
 def format_file(path: str, check_only: bool) -> int:
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -125,6 +154,7 @@ def format_file(path: str, check_only: bool) -> int:
 
     try:
         from .formatter import format_source
+        from .linter import lint_program
         from .parser import parse
         parse(source, path)
         formatted = format_source(source, path)
@@ -172,6 +202,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                 return EXIT_USAGE
             return format_file(argv[2], check_only=True)
         return format_file(argv[1], check_only=False)
+    if argv[0] == "lint":
+        if len(argv) < 2:
+            print("ezy: 'lint' requires a file path", file=sys.stderr)
+            return EXIT_USAGE
+        return lint_file(argv[1])
     if argv[0] == "check":
         if len(argv) < 2:
             print("ezy: 'check' requires a file path", file=sys.stderr)

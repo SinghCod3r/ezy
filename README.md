@@ -1,5 +1,9 @@
 # Ezy
 
+<div align="center">
+  <img src="docs/assets/ezy_logo.png" alt="Ezy Logo" width="300" />
+</div>
+
 Ezy is a readable, deterministic scripting language for automation:
 files, processes, HTTP, and JSON as first-class citizens, with syntax
 that stays close to plain English without becoming a natural-language
@@ -45,6 +49,21 @@ ezy repl                       # interactive session
 
 File extensions `.ezy` and `.ez` are both accepted.
 
+
+
+## Linting
+
+Ezy includes a static linter to catch common bugs before execution:
+
+```bash
+ezy lint script.ezy
+```
+
+The linter detects:
+- `[E101]` Undefined variables
+- `[E102]` Reassignment of constants
+- `[W202]` Unused variables
+- `[W203]` Unreachable code
 
 ## Formatting
 
